@@ -25,8 +25,8 @@ public partial class MainWindow : Window
     {
         StartVisualization();
     }
-    
-    private async void StartVisualization()
+
+    public async void StartVisualization()
     {
         var map = Input.ReadMapFromFile(MapTextBox.Text);
 
