@@ -5,5 +5,5 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Pathfinder.MainWindow"
         Title="Pathfinder">
-    Welcome to Avalonia!
+    <Canvas Name="VisualizationCanvas" />
 </Window>
