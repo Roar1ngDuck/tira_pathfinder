@@ -6,83 +6,109 @@ using Avalonia.Threading;
 using System.Threading.Tasks;
 using Pathfinder.Pathfinding;
 using System;
+using Avalonia.Media.Imaging;
+using Avalonia;
+using Avalonia.Platform;
 
 namespace Pathfinder;
 
 public partial class MainWindow : Window
 {
-    private const int CellSize = 20;
+    private WriteableBitmap _bitmap;
+    private bool _isUiUpdating = false;
 
     public MainWindow()
     {
         InitializeComponent();
+    }
+
+    private void Button_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
         StartVisualization();
     }
 
     private async void StartVisualization()
     {
-        var map = new int[,] 
-        {
-            { 0, 0, 1, 0, 0, 0 },
-            { 0, 0, 1, 0, 0, 0 },
-            { 0, 0, 1, 0, 0, 0 },
-            { 0, 0, 1, 0, 1, 0 },
-            { 0, 0, 0, 0, 1, 0 },
-            { 0, 0, 1, 0, 1, 0 },
-            { 0, 0, 1, 0, 0, 0 },
-        };
-        
-        var start = (3, 0);
-        var goal = (3, 5);
+        var map = Input.ReadMapFromFile(MapTextBox.Text);
 
-        var callbackFunc = (int[,] map, HashSet<(int x, int y)> visited, Queue<(int x, int y)> queue, (int x, int y) current) => 
+        _bitmap = new WriteableBitmap(new PixelSize(map.GetLength(0), map.GetLength(1)), new Vector(96, 96), PixelFormat.Rgba8888);
+        VisualizationImage.Source = _bitmap;
+
+        DrawEmptyMap(map);
+
+        var startNumbers = StartTextBox.Text.Split(',');
+        var start = new Node(int.Parse(startNumbers[0]), int.Parse(startNumbers[1]));
+
+        var goalNumbers = GoalTextBox.Text.Split(',');
+        var goal = new Node(int.Parse(goalNumbers[0]), int.Parse(goalNumbers[1]));
+
+        var callbackFunc = (int[,] map, HashSet<Node> visited, Queue<Node> queue, Node current) => 
         {
+            if (_isUiUpdating)
+            {
+                return;
+            }
+            _isUiUpdating = true;
+
             Dispatcher.UIThread.InvokeAsync(() =>
             {
+                NodesVisitedTextBox.Text = visited.Count.ToString();
                 DrawMap(map, visited, queue, current);
             });
         };
 
         await Task.Run(() => BFS.Search(map, start, goal, callbackFunc));
     }
-    private void DrawMap(int[,] map, HashSet<(int x, int y)> visited, Queue<(int x, int y)> queue, (int x, int y) current)
+
+    private void DrawEmptyMap(int[,] map)
     {
-        VisualizationCanvas.Children.Clear();
-
-        for (int y = 0; y < map.GetLength(1); y++)
+        using (var frameBuffer = _bitmap.Lock())
         {
-            for (int x = 0; x < map.GetLength(0); x++)
+            unsafe
             {
-                var color = Brushes.White;
-                if (current == (x, y))
-                {
-                    color = Brushes.Red;
-                }
-                else if (visited.Contains((x, y)))
-                {
-                    color = Brushes.LightGreen;
-                }
-                else if (queue.Contains((x, y)))
-                {
-                    color = Brushes.LightBlue;
-                }
-                else if (map[x, y] == 1)
-                {
-                    color = Brushes.Black;
-                }
+                uint* buffer = (uint*)frameBuffer.Address.ToPointer();
+                int stride = frameBuffer.RowBytes / sizeof(uint);
 
-                var rect = new Avalonia.Controls.Shapes.Rectangle
+                for (int y = 0; y < map.GetLength(1); y++)
                 {
-                    Width = CellSize,
-                    Height = CellSize,
-                    Fill = color,
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 0.5
-                };
-                Canvas.SetLeft(rect, x * CellSize);
-                Canvas.SetTop(rect, y * CellSize);
-                VisualizationCanvas.Children.Add(rect);
+                    for (int x = 0; x < map.GetLength(0); x++)
+                    {
+                        var mapValue = map[x, y];
+                        var brush = map[x, y] == 1 ? Brushes.Black : Brushes.White;
+                        var color = brush.Color.ToUInt32();
+
+                        buffer[y * stride + x] = color;
+                    }
+                }
             }
         }
+
+        VisualizationImage.InvalidateVisual();
+    }
+
+    private void DrawMap(int[,] map, HashSet<Node> visited, Queue<Node> queue, Node current)
+    {
+        using (var frameBuffer = _bitmap.Lock())
+        {
+            unsafe
+            {
+                uint* buffer = (uint*)frameBuffer.Address.ToPointer();
+                int stride = frameBuffer.RowBytes / sizeof(uint);
+
+                foreach (var node in visited)
+                {
+                    buffer[node.Y * stride + node.X] = Brushes.LightGreen.Color.ToUInt32();
+                }
+                foreach (var node in queue)
+                {
+                    buffer[node.Y * stride + node.X] = Brushes.LightBlue.Color.ToUInt32();
+                }
+                buffer[current.Y * stride + current.X] = Brushes.Red.Color.ToUInt32();
+            }
+        }
+
+        VisualizationImage.InvalidateVisual();
+
+        _isUiUpdating = false;
     }
 }

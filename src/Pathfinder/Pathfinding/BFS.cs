@@ -6,10 +6,10 @@ namespace Pathfinder.Pathfinding;
 
 public class BFS
 {
-    public static void Search(int[,] map, (int x, int y) start, (int x, int y) goal, Action<int[,], HashSet<(int x, int y)>, Queue<(int x, int y)>, (int x, int y)> callbackFunc)
+    public static void Search(int[,] map, Node start, Node goal, Action<int[,], HashSet<Node>, Queue<Node>, Node> callbackFunc)
     {
-        var visited = new HashSet<(int x, int y)>();
-        var queue = new Queue<(int x, int y)>();
+        var visited = new HashSet<Node>();
+        var queue = new Queue<Node>();
 
         queue.Enqueue(start);
 
@@ -29,13 +29,13 @@ public class BFS
 
             foreach (var neighbor in neighbors)
             {
-                if (!visited.Contains(neighbor))
+                if (!visited.Contains(neighbor) && !queue.Contains(neighbor))
                 {
                     queue.Enqueue(neighbor);
                 }
             }
 
-            Thread.Sleep(250);
+            Thread.Sleep(10);
         }
     }
 }

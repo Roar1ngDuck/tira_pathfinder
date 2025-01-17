@@ -5,5 +5,24 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Pathfinder.MainWindow"
         Title="Pathfinder">
-    <Canvas Name="VisualizationCanvas" />
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Left" Width="400" Margin="10">
+            <TextBlock Text="Map:" />
+            <TextBox Name="MapTextBox" VerticalAlignment="Top" />
+
+            <TextBlock Text="Start:" />
+            <TextBox Name="StartTextBox" VerticalAlignment="Top" />
+
+            <TextBlock Text="Goal:" />
+            <TextBox Name="GoalTextBox" VerticalAlignment="Top" />
+
+            <Button Click="Button_Click">Start</Button>
+
+            <TextBlock Text="Nodes visited:" />
+            <TextBox Name="NodesVisitedTextBox" IsReadOnly="True" VerticalAlignment="Top" />
+        </StackPanel>
+        <Viewbox Stretch="Uniform">
+            <Image Name="VisualizationImage" Stretch="None" RenderOptions.BitmapInterpolationMode="None"/>
+        </Viewbox>
+    </DockPanel>
 </Window>
