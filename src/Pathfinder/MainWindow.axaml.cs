@@ -15,7 +15,6 @@ namespace Pathfinder;
 public partial class MainWindow : Window
 {
     private WriteableBitmap _bitmap;
-    private bool _isUiUpdating = false;
 
     public MainWindow()
     {
@@ -26,14 +25,14 @@ public partial class MainWindow : Window
     {
         StartVisualization();
     }
-
+    
     private async void StartVisualization()
     {
         var map = Input.ReadMapFromFile(MapTextBox.Text);
 
         _bitmap = new WriteableBitmap(new PixelSize(map.GetLength(0), map.GetLength(1)), new Vector(96, 96), PixelFormat.Rgba8888);
         VisualizationImage.Source = _bitmap;
-
+        
         DrawEmptyMap(map);
 
         var startNumbers = StartTextBox.Text.Split(',');
@@ -42,22 +41,16 @@ public partial class MainWindow : Window
         var goalNumbers = GoalTextBox.Text.Split(',');
         var goal = new Node(int.Parse(goalNumbers[0]), int.Parse(goalNumbers[1]));
 
-        var callbackFunc = (int[,] map, HashSet<Node> visited, Queue<Node> queue, Node current) => 
+        await Task.Run(() => BFS.Search(map, start, goal, Callback, (int)Math.Pow(2, 6), TimeSpan.FromMicroseconds(1000)));
+    }
+
+    private void Callback(int[,] map, HashSet<Node> visited, Queue<Node> queue, Node current)
+    {
+        Dispatcher.UIThread.InvokeAsync(() =>
         {
-            if (_isUiUpdating)
-            {
-                return;
-            }
-            _isUiUpdating = true;
-
-            Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                NodesVisitedTextBox.Text = visited.Count.ToString();
-                DrawMap(map, visited, queue, current);
-            });
-        };
-
-        await Task.Run(() => BFS.Search(map, start, goal, callbackFunc));
+            NodesVisitedTextBox.Text = visited.Count.ToString();
+            DrawMap(map, visited, queue, current);
+        });
     }
 
     private void DrawEmptyMap(int[,] map)
@@ -108,7 +101,5 @@ public partial class MainWindow : Window
         }
 
         VisualizationImage.InvalidateVisual();
-
-        _isUiUpdating = false;
     }
 }
