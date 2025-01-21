@@ -17,6 +17,9 @@ public class AStar : IPathFindingAlgorithm
         var openSet = new PriorityQueue<Node, double>();
         openSet.Enqueue(start, 0);
 
+        var inOpenSet = new bool[map.GetLength(0), map.GetLength(1)];
+        inOpenSet[start.X, start.Y] = true;
+
         var width = map.GetLength(0);
         var height = map.GetLength(1);
         var cameFrom = new Node?[width, height];
@@ -42,6 +45,7 @@ public class AStar : IPathFindingAlgorithm
         while (openSet.Count > 0)
         {
             var current = openSet.Dequeue();
+            inOpenSet[current.X, current.Y] = false;
 
             if (current == goal)
             {
@@ -72,9 +76,10 @@ public class AStar : IPathFindingAlgorithm
                     gScore[neighbor.X, neighbor.Y] = tentative_gScore;
                     fScore[neighbor.X, neighbor.Y] = tentative_gScore + ManhattanDistance(neighbor, goal);
 
-                    if (!openSet.UnorderedItems.Any(x => x.Element == neighbor))
+                    if (!inOpenSet[neighbor.X, neighbor.Y])
                     {
                         openSet.Enqueue(neighbor, fScore[neighbor.X, neighbor.Y]);
+                        inOpenSet[neighbor.X, neighbor.Y] = true;
                     }
                 }
             }

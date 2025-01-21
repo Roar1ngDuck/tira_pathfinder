@@ -35,7 +35,7 @@ public partial class MainWindow : Window
         {
             var rnd = new Random();
 
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 10000; i++)
             {
                 var map = new int[100, 100];
                 for (int y = 0; y < map.GetLength(1); y++)
@@ -54,8 +54,6 @@ public partial class MainWindow : Window
                     var path = algorithm.Search(map, start, goal, null, 0, TimeSpan.Zero);
                     Console.WriteLine(path.Count);
                 }
-
-                Thread.Sleep(100);
             }
         });
 
