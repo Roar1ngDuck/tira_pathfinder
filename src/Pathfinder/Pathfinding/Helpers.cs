@@ -23,4 +23,15 @@ public class Helpers
 
         return neighbors;
     }
+
+    public static List<Node> ReconstructPath(Dictionary<Node, Node> cameFrom, Node current)
+    {
+        var totalPath = new List<Node> { current };
+        while (cameFrom.ContainsKey(current))
+        {
+            current = cameFrom[current];
+            totalPath.Insert(0, current);
+        }
+        return totalPath;
+    }
 }

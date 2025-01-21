@@ -1,58 +1,69 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 
 namespace Pathfinder.Pathfinding;
 
-public class BFS
+public class AStar
 {
     public static List<Node> Search(int[,] map, Node start, Node goal, Action<int[,], ICollection<Node>, ICollection<Node>, Node, ICollection<Node>?> callbackFunc, int callBackInterval, TimeSpan stepDelay)
     {
-        var visited = new HashSet<Node>();
-        var queue = new Queue<Node>();
+        var openSet = new PriorityQueue<Node, double>();
+        openSet.Enqueue(start, 0);
 
         var cameFrom = new Dictionary<Node, Node>();
 
-        queue.Enqueue(start);
+        var gScore = new Dictionary<Node, double>();
+        gScore[start] = 0;
+
+        var fScore = new Dictionary<Node, double>();
+        fScore[start] = ManhattanDistance(start, goal);
 
         var timingStopwatch = Stopwatch.StartNew();
         long steps = 0;
 
         var counter = 0;
 
-        while (queue.Count > 0)
+        while (openSet.Count > 0)
         {
-            var current = queue.Dequeue();
-            visited.Add(current);
+            var current = openSet.Dequeue();
 
             if (current == goal)
             {
                 var path = Helpers.ReconstructPath(cameFrom, current);
 
-                callbackFunc(map, visited, queue.ToImmutableArray(), current, path);
+                callbackFunc(map, gScore.Keys.ToImmutableArray(), openSet.UnorderedItems.Select(item => item.Element).ToImmutableArray(), current, path);
 
                 return path;
             }
 
             if (counter % callBackInterval == 0)
             {
-                callbackFunc(map, visited, queue.ToImmutableArray(), current, null);
+                callbackFunc(map, gScore.Keys.ToImmutableArray(), openSet.UnorderedItems.Select(item => item.Element).ToImmutableArray(), current, null);
             }
 
             var neighbors = Helpers.GetNeighbors(map, current);
-
             foreach (var neighbor in neighbors)
             {
-                if (visited.Contains(neighbor) || queue.Contains(neighbor))
-                {
-                    continue;
-                }
+                var cost = 1;
+                double tentative_gScore = gScore[current] + cost;
 
-                queue.Enqueue(neighbor);
-                cameFrom[neighbor] = current;
+                if (!gScore.ContainsKey(neighbor) || tentative_gScore < gScore[neighbor])
+                {
+                    cameFrom[neighbor] = current;
+                    gScore[neighbor] = tentative_gScore;
+                    fScore[neighbor] = tentative_gScore + ManhattanDistance(neighbor, goal);
+
+                    if (!openSet.UnorderedItems.Any(x => x.Element == neighbor))
+                    {
+                        openSet.Enqueue(neighbor, fScore[neighbor]);
+                    }
+                }
             }
 
             if (stepDelay.TotalMilliseconds > 0)
@@ -70,5 +81,10 @@ public class BFS
         }
 
         return new List<Node>();
+    }
+
+    static double ManhattanDistance(Node a, Node b)
+    {
+        return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
     }
 }

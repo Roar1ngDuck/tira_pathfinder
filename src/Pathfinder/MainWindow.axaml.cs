@@ -41,15 +41,15 @@ public partial class MainWindow : Window
         var goalNumbers = GoalTextBox.Text.Split(',');
         var goal = new Node(int.Parse(goalNumbers[0]), int.Parse(goalNumbers[1]));
 
-        await Task.Run(() => BFS.Search(map, start, goal, Callback, (int)Math.Pow(2, 6), TimeSpan.FromMicroseconds(1000)));
+        await Task.Run(() => AStar.Search(map, start, goal, Callback, (int)Math.Pow(2, 6), TimeSpan.FromMicroseconds(1000)));
     }
 
-    private void Callback(int[,] map, HashSet<Node> visited, Queue<Node> queue, Node current)
+    private void Callback(int[,] map, ICollection<Node> visited, ICollection<Node> queue, Node current, ICollection<Node>? path)
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
             NodesVisitedTextBox.Text = visited.Count.ToString();
-            DrawMap(map, visited, queue, current);
+            DrawMap(map, visited, queue, current, path);
         });
     }
 
@@ -79,7 +79,7 @@ public partial class MainWindow : Window
         VisualizationImage.InvalidateVisual();
     }
 
-    private void DrawMap(int[,] map, HashSet<Node> visited, Queue<Node> queue, Node current)
+    private void DrawMap(int[,] map, ICollection<Node> visited, ICollection<Node> queue, Node current, ICollection<Node>? path)
     {
         using (var frameBuffer = _bitmap.Lock())
         {
@@ -96,6 +96,14 @@ public partial class MainWindow : Window
                 {
                     buffer[node.Y * stride + node.X] = Brushes.LightBlue.Color.ToUInt32();
                 }
+                if (path != null)
+                {
+                    foreach (var node in path)
+                    {
+                        buffer[node.Y * stride + node.X] = Brushes.Red.Color.ToUInt32();
+                    }
+                }
+                
                 buffer[current.Y * stride + current.X] = Brushes.Red.Color.ToUInt32();
             }
         }
