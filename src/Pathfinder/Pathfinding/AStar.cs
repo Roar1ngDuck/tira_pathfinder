@@ -9,9 +9,9 @@ using System.Threading;
 
 namespace Pathfinder.Pathfinding;
 
-public class AStar
+public class AStar : IPathFindingAlgorithm
 {
-    public static List<Node> Search(int[,] map, Node start, Node goal, Action<int[,], ICollection<Node>, ICollection<Node>, Node, ICollection<Node>?> callbackFunc, int callBackInterval, TimeSpan stepDelay)
+    public List<Node> Search(int[,] map, Node start, Node goal, Action<int[,], ICollection<Node>, ICollection<Node>, Node, ICollection<Node>?>? callbackFunc, int callBackInterval, TimeSpan stepDelay)
     {
         var openSet = new PriorityQueue<Node, double>();
         openSet.Enqueue(start, 0);
@@ -37,12 +37,15 @@ public class AStar
             {
                 var path = Helpers.ReconstructPath(cameFrom, current);
 
-                callbackFunc(map, gScore.Keys.ToImmutableArray(), openSet.UnorderedItems.Select(item => item.Element).ToImmutableArray(), current, path);
+                if (callbackFunc != null)
+                {
+                    callbackFunc(map, gScore.Keys.ToImmutableArray(), openSet.UnorderedItems.Select(item => item.Element).ToImmutableArray(), current, path);
+                }
 
                 return path;
             }
 
-            if (counter % callBackInterval == 0)
+            if (callbackFunc != null && counter % callBackInterval == 0)
             {
                 callbackFunc(map, gScore.Keys.ToImmutableArray(), openSet.UnorderedItems.Select(item => item.Element).ToImmutableArray(), current, null);
             }
@@ -81,6 +84,11 @@ public class AStar
         }
 
         return new List<Node>();
+    }
+
+    public List<Node> Search(int[,] map, Node start, Node goal)
+    {
+        return Search(map, start, goal, null, 0, TimeSpan.Zero);
     }
 
     static double ManhattanDistance(Node a, Node b)

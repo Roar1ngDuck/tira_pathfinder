@@ -7,9 +7,9 @@ using System.Threading;
 
 namespace Pathfinder.Pathfinding;
 
-public class BFS
+public class BFS : IPathFindingAlgorithm
 {
-    public static List<Node> Search(int[,] map, Node start, Node goal, Action<int[,], ICollection<Node>, ICollection<Node>, Node, ICollection<Node>?> callbackFunc, int callBackInterval, TimeSpan stepDelay)
+    public List<Node> Search(int[,] map, Node start, Node goal, Action<int[,], ICollection<Node>, ICollection<Node>, Node, ICollection<Node>?>? callbackFunc, int callBackInterval, TimeSpan stepDelay)
     {
         var visited = new HashSet<Node>();
         var queue = new Queue<Node>();
@@ -32,12 +32,15 @@ public class BFS
             {
                 var path = Helpers.ReconstructPath(cameFrom, current);
 
-                callbackFunc(map, visited, queue.ToImmutableArray(), current, path);
+                if (callbackFunc != null)
+                {
+                    callbackFunc(map, visited, queue.ToImmutableArray(), current, path);
+                }
 
                 return path;
             }
 
-            if (counter % callBackInterval == 0)
+            if (callbackFunc != null && counter % callBackInterval == 0)
             {
                 callbackFunc(map, visited, queue.ToImmutableArray(), current, null);
             }
@@ -70,5 +73,10 @@ public class BFS
         }
 
         return new List<Node>();
+    }
+
+    public List<Node> Search(int[,] map, Node start, Node goal)
+    {
+        return Search(map, start, goal, null, 0, TimeSpan.Zero);
     }
 }

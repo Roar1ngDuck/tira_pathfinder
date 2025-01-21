@@ -9,6 +9,8 @@ using System;
 using Avalonia.Media.Imaging;
 using Avalonia;
 using Avalonia.Platform;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace Pathfinder;
 
@@ -41,7 +43,25 @@ public partial class MainWindow : Window
         var goalNumbers = GoalTextBox.Text.Split(',');
         var goal = new Node(int.Parse(goalNumbers[0]), int.Parse(goalNumbers[1]));
 
-        await Task.Run(() => AStar.Search(map, start, goal, Callback, (int)Math.Pow(2, 6), TimeSpan.FromMicroseconds(1000)));
+        var sw = Stopwatch.StartNew();
+
+        IPathFindingAlgorithm algorithm = AlgorithmComboBox.SelectedIndex switch
+        {
+            0 => new BFS(),
+            1 => new AStar(),
+            _ => throw new NotImplementedException()
+        };
+
+        //var path = await Task.Run(() => AStar.Search(map, start, goal, Callback, (int)Math.Pow(2, 6), TimeSpan.FromMicroseconds(1000)));
+        //var path = await Task.Run(() => AStar.Search(map, start, goal, null, 0, TimeSpan.Zero));
+
+        var path = await Task.Run(() => algorithm.Search(map, start, goal, null, 0, TimeSpan.Zero));
+
+        sw.Stop();
+
+        DrawMap(map, new List<Node>(), new List<Node>(), new Node(0, 0), path);
+
+        TimeTakenTextBox.Text = $"{sw.Elapsed.TotalMilliseconds} ms";
     }
 
     private void Callback(int[,] map, ICollection<Node> visited, ICollection<Node> queue, Node current, ICollection<Node>? path)

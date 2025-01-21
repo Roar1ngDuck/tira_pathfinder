@@ -16,10 +16,18 @@
             <TextBlock Text="Goal:" />
             <TextBox Name="GoalTextBox" VerticalAlignment="Top" />
 
+            <ComboBox Name="AlgorithmComboBox" SelectedIndex="1" MaxDropDownHeight="100">
+                <ComboBoxItem>BFS</ComboBoxItem>
+                <ComboBoxItem>A*</ComboBoxItem>
+            </ComboBox>
+
             <Button Click="Button_Click">Start</Button>
 
             <TextBlock Text="Nodes visited:" />
             <TextBox Name="NodesVisitedTextBox" IsReadOnly="True" VerticalAlignment="Top" />
+
+            <TextBlock Text="Time taken:" />
+            <TextBox Name="TimeTakenTextBox" IsReadOnly="True" VerticalAlignment="Top" />
         </StackPanel>
         <Viewbox Stretch="Uniform">
             <Image Name="VisualizationImage" Stretch="None" RenderOptions.BitmapInterpolationMode="None"/>
