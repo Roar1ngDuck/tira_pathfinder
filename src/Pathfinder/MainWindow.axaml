@@ -7,6 +7,9 @@
         Title="Pathfinder">
     <DockPanel>
         <StackPanel DockPanel.Dock="Left" Width="400" Margin="10">
+            <TextBlock Text="Status:" />
+            <TextBox Name="StatusTextBox" IsReadOnly="True" VerticalAlignment="Top" />
+
             <TextBlock Text="Map:" />
             <TextBox Name="MapTextBox" VerticalAlignment="Top" />
 
@@ -21,6 +24,10 @@
                 <ComboBoxItem>A*</ComboBoxItem>
             </ComboBox>
 
+            <TextBlock Text="Mode:" />
+            <RadioButton GroupName="ModeGroup" Name="VisualizeRadioButton" Content="Visualize" IsChecked="False"/>
+            <RadioButton GroupName="ModeGroup" Name="BenchmarkRadioButton" Content="Benchmark" IsChecked="True"/>
+            
             <Button Click="Button_Click">Start</Button>
 
             <TextBlock Text="Nodes visited:" />

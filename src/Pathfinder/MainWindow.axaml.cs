@@ -21,6 +21,45 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        WarmupAlgorithms();
+    }
+
+    private async Task WarmupAlgorithms()
+    {
+        StatusTextBox.Text = "Warming up algorithms";
+
+        var algorithms = new IPathFindingAlgorithm[] { new BFS(), new AStar() };
+
+        await Task.Run(() => 
+        {
+            var rnd = new Random();
+
+            for (int i = 0; i < 10; i++)
+            {
+                var map = new int[100, 100];
+                for (int y = 0; y < map.GetLength(1); y++)
+                {
+                    for (int x = 0; x < map.GetLength(0); x++)
+                    {
+                        map[x, y] = rnd.Next(0, 2);
+                    }
+                }
+
+                var start = new Node(rnd.Next(0, map.GetLength(0)), rnd.Next(0, map.GetLength(1)));
+                var goal = new Node(rnd.Next(0, map.GetLength(0)), rnd.Next(0, map.GetLength(1)));
+
+                foreach (var algorithm in algorithms)
+                {
+                    var path = algorithm.Search(map, start, goal, null, 0, TimeSpan.Zero);
+                    Console.WriteLine(path.Count);
+                }
+
+                Thread.Sleep(100);
+            }
+        });
+
+        StatusTextBox.Text = "Ready";
     }
 
     private void Button_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -43,8 +82,6 @@ public partial class MainWindow : Window
         var goalNumbers = GoalTextBox.Text.Split(',');
         var goal = new Node(int.Parse(goalNumbers[0]), int.Parse(goalNumbers[1]));
 
-        var sw = Stopwatch.StartNew();
-
         IPathFindingAlgorithm algorithm = AlgorithmComboBox.SelectedIndex switch
         {
             0 => new BFS(),
@@ -52,14 +89,22 @@ public partial class MainWindow : Window
             _ => throw new NotImplementedException()
         };
 
-        //var path = await Task.Run(() => AStar.Search(map, start, goal, Callback, (int)Math.Pow(2, 6), TimeSpan.FromMicroseconds(1000)));
-        //var path = await Task.Run(() => AStar.Search(map, start, goal, null, 0, TimeSpan.Zero));
+        var sw = new Stopwatch();
 
-        var path = await Task.Run(() => algorithm.Search(map, start, goal, null, 0, TimeSpan.Zero));
+        if (VisualizeRadioButton.IsChecked.HasValue && VisualizeRadioButton.IsChecked.Value)
+        {
+            sw.Start();
+            await Task.Run(() => algorithm.Search(map, start, goal, Callback, (int)Math.Pow(2, 6), TimeSpan.FromMicroseconds(1000)));
+            sw.Stop();
+        }
+        else
+        {
+            sw.Start();
+            var path = algorithm.Search(map, start, goal, null, 0, TimeSpan.Zero);
+            sw.Stop();
 
-        sw.Stop();
-
-        DrawMap(map, new List<Node>(), new List<Node>(), new Node(0, 0), path);
+            DrawMap(map, new List<Node>(), new List<Node>(), new Node(0, 0), path);
+        }
 
         TimeTakenTextBox.Text = $"{sw.Elapsed.TotalMilliseconds} ms";
     }

@@ -24,7 +24,6 @@ public partial class App : Application
                 mainWindow.MapTextBox.Text = args[0];
                 mainWindow.StartTextBox.Text = args[1];
                 mainWindow.GoalTextBox.Text = args[2];
-                mainWindow.StartVisualization();
             }
         }
 
