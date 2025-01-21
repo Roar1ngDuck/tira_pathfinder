@@ -1,3 +1,4 @@
+using Avalonia.Controls.Shapes;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -16,17 +17,26 @@ public class AStar : IPathFindingAlgorithm
         var openSet = new PriorityQueue<Node, double>();
         openSet.Enqueue(start, 0);
 
-        var cameFrom = new Dictionary<Node, Node>();
+        var width = map.GetLength(0);
+        var height = map.GetLength(1);
+        var cameFrom = new Node?[width, height];
+        var gScore = new double[width, height];
+        var fScore = new double[width, height];
 
-        var gScore = new Dictionary<Node, double>();
-        gScore[start] = 0;
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                gScore[x, y] = double.MaxValue;
+                fScore[x, y] = double.MaxValue;
+            }
+        }
 
-        var fScore = new Dictionary<Node, double>();
-        fScore[start] = ManhattanDistance(start, goal);
+        gScore[start.X, start.Y] = 0;
+        fScore[start.X, start.Y] = ManhattanDistance(start, goal);
 
         var timingStopwatch = Stopwatch.StartNew();
         long steps = 0;
-
         var counter = 0;
 
         while (openSet.Count > 0)
@@ -39,7 +49,7 @@ public class AStar : IPathFindingAlgorithm
 
                 if (callbackFunc != null)
                 {
-                    callbackFunc(map, gScore.Keys.ToImmutableArray(), openSet.UnorderedItems.Select(item => item.Element).ToImmutableArray(), current, path);
+                    callbackFunc(map, ExtractVisitedNodes(gScore), openSet.UnorderedItems.Select(item => item.Element).ToArray(), current, path);
                 }
 
                 return path;
@@ -47,24 +57,24 @@ public class AStar : IPathFindingAlgorithm
 
             if (callbackFunc != null && counter % callBackInterval == 0)
             {
-                callbackFunc(map, gScore.Keys.ToImmutableArray(), openSet.UnorderedItems.Select(item => item.Element).ToImmutableArray(), current, null);
+                callbackFunc(map, ExtractVisitedNodes(gScore), openSet.UnorderedItems.Select(item => item.Element).ToArray(), current, null);
             }
 
             var neighbors = Helpers.GetNeighbors(map, current);
             foreach (var neighbor in neighbors)
             {
                 var cost = 1;
-                double tentative_gScore = gScore[current] + cost;
+                double tentative_gScore = gScore[current.X, current.Y] + cost;
 
-                if (!gScore.ContainsKey(neighbor) || tentative_gScore < gScore[neighbor])
+                if (tentative_gScore < gScore[neighbor.X, neighbor.Y])
                 {
-                    cameFrom[neighbor] = current;
-                    gScore[neighbor] = tentative_gScore;
-                    fScore[neighbor] = tentative_gScore + ManhattanDistance(neighbor, goal);
+                    cameFrom[neighbor.X, neighbor.Y] = current;
+                    gScore[neighbor.X, neighbor.Y] = tentative_gScore;
+                    fScore[neighbor.X, neighbor.Y] = tentative_gScore + ManhattanDistance(neighbor, goal);
 
                     if (!openSet.UnorderedItems.Any(x => x.Element == neighbor))
                     {
-                        openSet.Enqueue(neighbor, fScore[neighbor]);
+                        openSet.Enqueue(neighbor, fScore[neighbor.X, neighbor.Y]);
                     }
                 }
             }
@@ -94,5 +104,21 @@ public class AStar : IPathFindingAlgorithm
     static double ManhattanDistance(Node a, Node b)
     {
         return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
+    }
+
+    private static ICollection<Node> ExtractVisitedNodes(double[,] gScore)
+    {
+        var visitedNodes = new List<Node>();
+        for (int x = 0; x < gScore.GetLength(0); x++)
+        {
+            for (int y = 0; y < gScore.GetLength(1); y++)
+            {
+                if (gScore[x, y] != double.MaxValue)
+                {
+                    visitedNodes.Add(new Node(x, y));
+                }
+            }
+        }
+        return visitedNodes;
     }
 }

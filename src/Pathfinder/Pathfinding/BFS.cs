@@ -14,7 +14,9 @@ public class BFS : IPathFindingAlgorithm
         var visited = new HashSet<Node>();
         var queue = new Queue<Node>();
 
-        var cameFrom = new Dictionary<Node, Node>();
+        var width = map.GetLength(0);
+        var height = map.GetLength(1);
+        var cameFrom = new Node?[width, height];
 
         queue.Enqueue(start);
 
@@ -55,7 +57,7 @@ public class BFS : IPathFindingAlgorithm
                 }
 
                 queue.Enqueue(neighbor);
-                cameFrom[neighbor] = current;
+                cameFrom[neighbor.X, neighbor.Y] = current;
             }
 
             if (stepDelay.TotalMilliseconds > 0)

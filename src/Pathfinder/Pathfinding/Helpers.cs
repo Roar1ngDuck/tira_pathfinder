@@ -24,12 +24,12 @@ public class Helpers
         return neighbors;
     }
 
-    public static List<Node> ReconstructPath(Dictionary<Node, Node> cameFrom, Node current)
+    public static List<Node> ReconstructPath(Node?[,] cameFrom, Node current)
     {
         var totalPath = new List<Node> { current };
-        while (cameFrom.ContainsKey(current))
+        while (cameFrom[current.X, current.Y] != null)
         {
-            current = cameFrom[current];
+            current = cameFrom[current.X, current.Y]!.Value;
             totalPath.Insert(0, current);
         }
         return totalPath;
