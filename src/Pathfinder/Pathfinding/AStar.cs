@@ -12,19 +12,28 @@ namespace Pathfinder.Pathfinding;
 
 public class AStar : IPathFindingAlgorithm
 {
-    public List<Node> Search(int[,] map, Node start, Node goal, Action<int[,], ICollection<Node>, ICollection<Node>, Node, ICollection<Node>?>? callbackFunc, int callBackInterval, TimeSpan stepDelay)
+    private readonly int[,] _map;
+   
+    public AStar(int[,] map)
+    {
+        _map = map;
+    }
+
+    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal, Action<int[,], IEnumerable<Node>, IEnumerable<Node>, Node>? callbackFunc, TimeSpan stepDelay)
     {
         var openSet = new PriorityQueue<Node, double>();
         openSet.Enqueue(start, 0);
 
-        var inOpenSet = new bool[map.GetLength(0), map.GetLength(1)];
+        var inOpenSet = new bool[_map.GetLength(0), _map.GetLength(1)];
         inOpenSet[start.X, start.Y] = true;
 
-        var width = map.GetLength(0);
-        var height = map.GetLength(1);
+        var width = _map.GetLength(0);
+        var height = _map.GetLength(1);
         var cameFrom = new Node?[width, height];
         var gScore = new double[width, height];
         var fScore = new double[width, height];
+
+        Func<Node, Node, double> heurestic = allowDiagonal ? EuclideanDistance : ManhattanDistance;
 
         for (int x = 0; x < width; x++)
         {
@@ -36,45 +45,39 @@ public class AStar : IPathFindingAlgorithm
         }
 
         gScore[start.X, start.Y] = 0;
-        fScore[start.X, start.Y] = ManhattanDistance(start, goal);
+        fScore[start.X, start.Y] = heurestic(start, goal);
 
         var timingStopwatch = Stopwatch.StartNew();
-        long steps = 0;
-        var counter = 0;
+        long counter = 0;
 
         while (openSet.Count > 0)
         {
             var current = openSet.Dequeue();
             inOpenSet[current.X, current.Y] = false;
 
+            if (callbackFunc != null && MainWindow.ShouldCallCallback)
+            {
+                var visited = ExtractVisitedNodes(gScore);
+                var queue = openSet.UnorderedItems.Select(item => item.Element).ToList();
+                callbackFunc(_map, visited, queue, current);
+            }
+
             if (current == goal)
             {
                 var path = Helpers.ReconstructPath(cameFrom, current);
-
-                if (callbackFunc != null)
-                {
-                    callbackFunc(map, ExtractVisitedNodes(gScore), openSet.UnorderedItems.Select(item => item.Element).ToArray(), current, path);
-                }
-
-                return path;
+                return new PathFindingResult(ExtractVisitedNodes(gScore), path);
             }
 
-            if (callbackFunc != null && counter % callBackInterval == 0)
+            var neighbors = Helpers.GetNeighbors(_map, current, allowDiagonal);
+            foreach (var (neighbor, cost) in neighbors)
             {
-                callbackFunc(map, ExtractVisitedNodes(gScore), openSet.UnorderedItems.Select(item => item.Element).ToArray(), current, null);
-            }
-
-            var neighbors = Helpers.GetNeighbors(map, current);
-            foreach (var neighbor in neighbors)
-            {
-                var cost = 1;
                 double tentative_gScore = gScore[current.X, current.Y] + cost;
 
                 if (tentative_gScore < gScore[neighbor.X, neighbor.Y])
                 {
                     cameFrom[neighbor.X, neighbor.Y] = current;
                     gScore[neighbor.X, neighbor.Y] = tentative_gScore;
-                    fScore[neighbor.X, neighbor.Y] = tentative_gScore + ManhattanDistance(neighbor, goal);
+                    fScore[neighbor.X, neighbor.Y] = tentative_gScore + heurestic(neighbor, goal);
 
                     if (!inOpenSet[neighbor.X, neighbor.Y])
                     {
@@ -86,9 +89,8 @@ public class AStar : IPathFindingAlgorithm
 
             if (stepDelay.TotalMilliseconds > 0)
             {
-                steps++;
                 double elapsedMs = timingStopwatch.Elapsed.TotalMilliseconds;
-                double targetDelay = steps * stepDelay.TotalMilliseconds;
+                double targetDelay = counter * stepDelay.TotalMilliseconds;
                 if (elapsedMs < targetDelay)
                 {
                     Thread.Sleep((int)Math.Max(1, targetDelay - elapsedMs));
@@ -98,17 +100,22 @@ public class AStar : IPathFindingAlgorithm
             counter++;
         }
 
-        return new List<Node>();
+        return new PathFindingResult(ExtractVisitedNodes(gScore), null);
     }
 
-    public List<Node> Search(int[,] map, Node start, Node goal)
+    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal)
     {
-        return Search(map, start, goal, null, 0, TimeSpan.Zero);
+        return Search(start, goal, allowDiagonal, null, TimeSpan.Zero);
     }
 
     static double ManhattanDistance(Node a, Node b)
     {
         return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
+    }
+
+    double EuclideanDistance(Node a, Node b)
+    {
+        return Math.Sqrt(Math.Pow(a.X - b.X, 2) + Math.Pow(a.Y - b.Y, 2));
     }
 
     private static ICollection<Node> ExtractVisitedNodes(double[,] gScore)

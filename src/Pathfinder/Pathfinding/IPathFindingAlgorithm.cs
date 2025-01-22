@@ -5,7 +5,7 @@ namespace Pathfinder.Pathfinding;
 
 public interface IPathFindingAlgorithm
 {
-    public List<Node> Search(int[,] map, Node start, Node goal, Action<int[,], ICollection<Node>, ICollection<Node>, Node, ICollection<Node>?>? callbackFunc, int callBackInterval, TimeSpan stepDelay);
+    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal, Action<int[,], IEnumerable<Node>, IEnumerable<Node>, Node>? callbackFunc, TimeSpan stepDelay);
 
-    public List<Node> Search(int[,] map, Node start, Node goal);
+    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal);
 }
