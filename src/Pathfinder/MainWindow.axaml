@@ -19,15 +19,18 @@
             <TextBlock Text="Goal:" />
             <TextBox Name="GoalTextBox" VerticalAlignment="Top" />
 
+			<TextBlock Text="Algorithm:" />
             <ComboBox Name="AlgorithmComboBox" SelectedIndex="1" MaxDropDownHeight="100">
-                <ComboBoxItem>BFS</ComboBoxItem>
+                <ComboBoxItem>Dijkstra</ComboBoxItem>
                 <ComboBoxItem>A*</ComboBoxItem>
             </ComboBox>
 
-            <TextBlock Text="Mode:" />
-            <RadioButton GroupName="ModeGroup" Name="VisualizeRadioButton" Content="Visualize" IsChecked="False"/>
-            <RadioButton GroupName="ModeGroup" Name="BenchmarkRadioButton" Content="Benchmark" IsChecked="True"/>
-            
+			<CheckBox Name="AllowDiagonalCheckBox" Content="Allow diagonal moves" />
+
+			<TextBlock Text="Step delay:" />
+			<Slider Name="StepDelaySlider" Minimum="0" Maximum="20" 
+					TickFrequency="1" TickPlacement="BottomRight" SmallChange="1" />
+			
             <Button Click="Button_Click">Start</Button>
 
             <TextBlock Text="Nodes visited:" />
@@ -36,8 +39,20 @@
             <TextBlock Text="Time taken:" />
             <TextBox Name="TimeTakenTextBox" IsReadOnly="True" VerticalAlignment="Top" />
         </StackPanel>
-        <Viewbox Stretch="Uniform">
-            <Image Name="VisualizationImage" Stretch="None" RenderOptions.BitmapInterpolationMode="None"/>
-        </Viewbox>
+		<Viewbox Stretch="Uniform">
+			<Grid>
+				<Image Name="VisualizationImage"
+					   Stretch="None"
+					   RenderOptions.BitmapInterpolationMode="None"
+					   PointerPressed="OnPointerPressed"
+					   PointerMoved="OnPointerMoved"
+					   PointerReleased="OnPointerReleased"/>
+				<Canvas Name="DrawingCanvas" IsHitTestVisible="False">
+					<Line Name="DynamicLine"
+						  Stroke="Red"
+						  StrokeThickness="2"/>
+				</Canvas>
+			</Grid>
+		</Viewbox>
     </DockPanel>
 </Window>
