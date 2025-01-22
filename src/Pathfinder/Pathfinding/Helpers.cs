@@ -5,19 +5,28 @@ namespace Pathfinder.Pathfinding;
 
 public class Helpers
 {
-    private static readonly (int, int)[] directions = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+    private static readonly (int, int, double)[] directionsStraight = [(-1, 0, 1), (1, 0, 1), (0, -1, 1), (0, 1, 1)];
 
-    public static List<Node> GetNeighbors(int[,] map, Node current)
+    private static readonly(int, int, double)[] directionsDiagonal = [
+        (-1, 0, 1), (1, 0, 1), (0, -1, 1), (0, 1, 1), // Suoraan
+        (-1, -1, Math.Sqrt(2)), (-1, 1, Math.Sqrt(2)), (1, -1, Math.Sqrt(2)), (1, 1, Math.Sqrt(2)) // Vinottain
+    ];
+
+    public static List<(Node neighbor, double cost)> GetNeighbors(int[,] grid, Node node, bool allowDiagonal)
     {
-        var neighbors = new List<Node>();
-        foreach (var (dx, dy) in directions)
-        {
-            int x = current.X + dx;
-            int y = current.Y + dy;
+        var directions = allowDiagonal ? directionsDiagonal : directionsStraight;
 
-            if (x >= 0 && x < map.GetLength(0) && y >= 0 && y < map.GetLength(1) && map[x, y] == 0)
+        var neighbors = new List<(Node, double)>();
+        foreach (var (dr, dc, cost) in directions)
+        {
+            int newRow = node.X + dr;
+            int newCol = node.Y + dc;
+
+            if (newRow >= 0 && newRow < grid.GetLength(0) &&
+                newCol >= 0 && newCol < grid.GetLength(1) &&
+                grid[newRow, newCol] == 0)
             {
-                neighbors.Add(new Node(x, y));
+                neighbors.Add((new Node(newRow, newCol), cost));
             }
         }
 
