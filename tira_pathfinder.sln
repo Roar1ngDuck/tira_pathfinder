@@ -4,7 +4,9 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pathfinder", "src\Pathfinder\Pathfinder.csproj", "{A3E1DBC0-32A2-BEAC-5BD8-9D857FAB8854}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pathfinder", "src\Pathfinder\Pathfinder.csproj", "{A3E1DBC0-32A2-BEAC-5BD8-9D857FAB8854}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pathfinder.Tests", "src\Pathfinder.Tests\Pathfinder.Tests.csproj", "{F9D62D36-D42D-4809-A717-93857866A125}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -16,6 +18,10 @@ Global
 		{A3E1DBC0-32A2-BEAC-5BD8-9D857FAB8854}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A3E1DBC0-32A2-BEAC-5BD8-9D857FAB8854}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A3E1DBC0-32A2-BEAC-5BD8-9D857FAB8854}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9D62D36-D42D-4809-A717-93857866A125}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9D62D36-D42D-4809-A717-93857866A125}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9D62D36-D42D-4809-A717-93857866A125}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9D62D36-D42D-4809-A717-93857866A125}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
