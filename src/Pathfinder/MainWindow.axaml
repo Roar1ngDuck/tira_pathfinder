@@ -36,6 +36,9 @@
             <TextBlock Text="Nodes visited:" />
             <TextBox Name="NodesVisitedTextBox" IsReadOnly="True" VerticalAlignment="Top" />
 
+			<TextBlock Text="Path length:" />
+			<TextBox Name="PathLengthTextBox" IsReadOnly="True" VerticalAlignment="Top" />
+
             <TextBlock Text="Time taken:" />
             <TextBox Name="TimeTakenTextBox" IsReadOnly="True" VerticalAlignment="Top" />
         </StackPanel>

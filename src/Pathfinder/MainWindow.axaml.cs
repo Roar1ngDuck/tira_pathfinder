@@ -71,6 +71,9 @@ public partial class MainWindow : Window
     public async void StartVisualization()
     {
         DynamicLine.IsVisible = false;
+        NodesVisitedTextBox.Text = "";
+        PathLengthTextBox.Text = "";
+        TimeTakenTextBox.Text = "";
 
         var map = Input.ReadMapFromFile(MapTextBox.Text);
         //var map = Input.ReadMapFromImage(MapTextBox.Text);
@@ -116,14 +119,16 @@ public partial class MainWindow : Window
         }
 
         var visited = result.VisitedNodes;
-        IEnumerable<Node> emptyList = new List<Node>();
+        ICollection<Node> emptyList = new List<Node>();
 
         DrawMap(map, ref visited, ref emptyList, new Node(0, 0), result.Path);
 
+        NodesVisitedTextBox.Text = result.VisitedNodes.Count.ToString();
+        PathLengthTextBox.Text = result.Path.Count.ToString();
         TimeTakenTextBox.Text = $"{sw.Elapsed.TotalMilliseconds} ms";
     }
 
-    private void Callback(int[,] map, IEnumerable<Node> visited, IEnumerable<Node> queue, Node current)
+    private void Callback(int[,] map, ICollection<Node> visited, ICollection<Node> queue, Node current)
     {
         ShouldCallCallback = false;
 
@@ -160,10 +165,8 @@ public partial class MainWindow : Window
         VisualizationImage.InvalidateVisual();
     }
 
-    private void DrawMap(int[,] map, ref IEnumerable<Node> visited, ref IEnumerable<Node> queue, Node? current, ICollection<Node>? path)
+    private void DrawMap(int[,] map, ref ICollection<Node> visited, ref ICollection<Node> queue, Node? current, ICollection<Node>? path)
     {
-        var visitedCount = 0;
-
         using (var frameBuffer = _bitmap.Lock())
         {
             unsafe
@@ -173,7 +176,6 @@ public partial class MainWindow : Window
 
                 foreach (var node in visited)
                 {
-                    visitedCount++;
                     buffer[node.Y * stride + node.X] = Brushes.LightGreen.Color.ToUInt32();
                 }
 
@@ -198,7 +200,5 @@ public partial class MainWindow : Window
         }
 
         VisualizationImage.InvalidateVisual();
-
-        NodesVisitedTextBox.Text = visitedCount.ToString();
     }
 }

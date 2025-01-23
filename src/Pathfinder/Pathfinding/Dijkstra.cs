@@ -18,7 +18,7 @@ namespace Pathfinder.Pathfinding
             _map = map;
         }
 
-        public PathFindingResult Search(Node start, Node goal, bool allowDiagonal, Action<int[,], IEnumerable<Node>, IEnumerable<Node>, Node>? callbackFunc, TimeSpan stepDelay)
+        public PathFindingResult Search(Node start, Node goal, bool allowDiagonal, Action<int[,], ICollection<Node>, ICollection<Node>, Node>? callbackFunc, TimeSpan stepDelay)
         {
             var openSet = new PriorityQueue<Node, double>();
             openSet.Enqueue(start, 0);

@@ -19,7 +19,7 @@ public class AStar : IPathFindingAlgorithm
         _map = map;
     }
 
-    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal, Action<int[,], IEnumerable<Node>, IEnumerable<Node>, Node>? callbackFunc, TimeSpan stepDelay)
+    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal, Action<int[,], ICollection<Node>, ICollection<Node>, Node>? callbackFunc, TimeSpan stepDelay)
     {
         var openSet = new PriorityQueue<Node, double>();
         openSet.Enqueue(start, 0);
@@ -57,7 +57,7 @@ public class AStar : IPathFindingAlgorithm
 
             if (callbackFunc != null && MainWindow.ShouldCallCallback)
             {
-                var visited = ExtractVisitedNodes(gScore);
+                var visited = ExtractVisitedNodes(gScore, inOpenSet);
                 var queue = openSet.UnorderedItems.Select(item => item.Element).ToList();
                 callbackFunc(_map, visited, queue, current);
             }
@@ -65,7 +65,7 @@ public class AStar : IPathFindingAlgorithm
             if (current == goal)
             {
                 var path = Helpers.ReconstructPath(cameFrom, current);
-                return new PathFindingResult(ExtractVisitedNodes(gScore), path);
+                return new PathFindingResult(ExtractVisitedNodes(gScore, inOpenSet), path);
             }
 
             var neighbors = Helpers.GetNeighbors(_map, current, allowDiagonal);
@@ -100,7 +100,7 @@ public class AStar : IPathFindingAlgorithm
             counter++;
         }
 
-        return new PathFindingResult(ExtractVisitedNodes(gScore), null);
+        return new PathFindingResult(ExtractVisitedNodes(gScore, inOpenSet), null);
     }
 
     public PathFindingResult Search(Node start, Node goal, bool allowDiagonal)
@@ -118,14 +118,14 @@ public class AStar : IPathFindingAlgorithm
         return Math.Sqrt(Math.Pow(a.X - b.X, 2) + Math.Pow(a.Y - b.Y, 2));
     }
 
-    private static ICollection<Node> ExtractVisitedNodes(double[,] gScore)
+    private static ICollection<Node> ExtractVisitedNodes(double[,] gScore, bool[,] inOpenSet)
     {
         var visitedNodes = new List<Node>();
         for (int x = 0; x < gScore.GetLength(0); x++)
         {
             for (int y = 0; y < gScore.GetLength(1); y++)
             {
-                if (gScore[x, y] != double.MaxValue)
+                if (!inOpenSet[x, y] && gScore[x, y] != double.MaxValue)
                 {
                     visitedNodes.Add(new Node(x, y));
                 }
