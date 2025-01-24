@@ -31,7 +31,7 @@
 			<Slider Name="StepDelaySlider" Minimum="0" Maximum="20" 
 					TickFrequency="1" TickPlacement="BottomRight" SmallChange="1" />
 			
-            <Button Click="Button_Click">Start</Button>
+            <Button Click="StartButton_Click">Start</Button>
 
             <TextBlock Text="Nodes visited:" />
             <TextBox Name="NodesVisitedTextBox" IsReadOnly="True" VerticalAlignment="Top" />

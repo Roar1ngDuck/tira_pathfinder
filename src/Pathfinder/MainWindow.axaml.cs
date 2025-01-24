@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Threading;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -10,30 +9,40 @@ using Avalonia.Media.Imaging;
 using Avalonia;
 using Avalonia.Platform;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Collections;
-using System.Security.Cryptography;
-using System.ComponentModel;
 using Avalonia.Input;
+using System.Linq;
 
 namespace Pathfinder;
 
 public partial class MainWindow : Window
 {
+    public static bool ShouldCallCallback = true;
+
     private WriteableBitmap _bitmap;
     private Point _startPosition;
-    public static bool ShouldCallCallback = true;
+    private Stopwatch _timingStopwatch;
+    private int[,] _map;
 
     public MainWindow()
     {
         InitializeComponent();
     }
 
-    private void Button_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    /// <summary>
+    /// Event handler start napin klikkausta varten
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void StartButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         StartVisualization();
     }
 
+    /// <summary>
+    /// Event handler kuvan päällä hiiren pohjassapidon aloitusta varten.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.GetCurrentPoint(VisualizationImage).Properties.IsLeftButtonPressed)
@@ -43,6 +52,11 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Event handler kuvan päällä hiiren liikuttamista varten. Piirtää viivan pohjassapidon alkupisteestä tämän hetkiseen hiiren sijaintiin.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
     private void OnPointerMoved(object? sender, PointerEventArgs e)
     {
         if (e.GetCurrentPoint(VisualizationImage).Properties.IsLeftButtonPressed)
@@ -52,6 +66,11 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Event handler kuvan päällä hiiren pohjassapidon lopetusta varten.
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
     private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         if (e.InitialPressMouseButton == MouseButton.Left)
@@ -61,6 +80,11 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Piirtää viivan pisteiden välille
+    /// </summary>
+    /// <param name="start"></param>
+    /// <param name="end"></param>
     private void UpdateLine(Point start, Point end)
     {
         DynamicLine.StartPoint = start;
@@ -68,78 +92,138 @@ public partial class MainWindow : Window
         DynamicLine.IsVisible = true;
     }
 
-    public async void StartVisualization()
+    /// <summary>
+    /// Aloittaa reitinhaun visualisoinnin
+    /// </summary>
+    public void StartVisualization()
     {
-        DynamicLine.IsVisible = false;
-        NodesVisitedTextBox.Text = "";
-        PathLengthTextBox.Text = "";
-        TimeTakenTextBox.Text = "";
-
-        var map = Input.ReadMapFromFile(MapTextBox.Text);
-        //var map = Input.ReadMapFromImage(MapTextBox.Text);
-
-        _bitmap = new WriteableBitmap(new PixelSize(map.GetLength(0), map.GetLength(1)), new Vector(96, 96), PixelFormat.Rgba8888);
-        VisualizationImage.Source = _bitmap;
-        
-        DrawEmptyMap(map);
-
-        var startNumbers = StartTextBox.Text.Split(',');
-        var start = new Node(int.Parse(startNumbers[0]), int.Parse(startNumbers[1]));
-
-        var goalNumbers = GoalTextBox.Text.Split(',');
-        var goal = new Node(int.Parse(goalNumbers[0]), int.Parse(goalNumbers[1]));
-
-        var allowDiagonal = AllowDiagonalCheckBox.IsChecked.HasValue && AllowDiagonalCheckBox.IsChecked.Value;
-
-        IPathFindingAlgorithm algorithm = AlgorithmComboBox.SelectedIndex switch
+        //for (int i = 0; i < 800; i++)
         {
-            0 => new Dijkstra(map),
-            1 => new AStar(map),
-            _ => throw new NotImplementedException()
-        };
+            ClearPreviousRun();
 
-        var sw = new Stopwatch();
+            InitMap(MapTextBox.Text);
 
-        var stepDelay = StepDelaySlider.Value;
+            var startNumbers = StartTextBox.Text.Split(',');
+            var start = new Node(int.Parse(startNumbers[0]), int.Parse(startNumbers[1]));
 
+            var goalNumbers = GoalTextBox.Text.Split(',');
+            var goal = new Node(int.Parse(goalNumbers[0]), int.Parse(goalNumbers[1]));
+
+            var algorithm = GetSelectedAlgorithm();
+
+            var allowDiagonal = AllowDiagonalCheckBox.IsChecked.HasValue && AllowDiagonalCheckBox.IsChecked.Value;
+
+            var stepDelay = Math.Pow(StepDelaySlider.Value, 4);
+
+            RunPathfinding(start, goal, algorithm, allowDiagonal, stepDelay);
+        }
+    }
+
+    /// <summary>
+    /// Aloittaa reitinetsinnän kartassa aloituspisteestä maalipisteeseen ja piirtää tuloksen.
+    /// </summary>
+    /// <param name="start">Aloituspiste</param>
+    /// <param name="goal">Maalipiste</param>
+    /// <param name="algorithm">Käytettävä reitinhakualgoritmi</param>
+    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirtymiset</param>
+    /// <param name="stepDelay">Haluttu keskimääräinen viive jokaisen pisteen käsittelylle mikrosekunteina</param>
+    private async void RunPathfinding(Node start, Node goal, IPathFindingAlgorithm algorithm, bool allowDiagonal, double stepDelay)
+    {
         PathFindingResult result;
 
         if (stepDelay > 0)
         {
-            var stepDelayTimeSpan = TimeSpan.FromMicroseconds(Math.Pow(stepDelay, 4));
-            sw.Start();
+            var stepDelayTimeSpan = TimeSpan.FromMicroseconds(stepDelay);
+            _timingStopwatch = Stopwatch.StartNew();
             result = await Task.Run(() => algorithm.Search(start, goal, allowDiagonal, Callback, stepDelayTimeSpan));
-            sw.Stop();
+            _timingStopwatch.Stop();
         }
         else
         {
-            sw.Start();
+            _timingStopwatch = Stopwatch.StartNew();
             result = algorithm.Search(start, goal, allowDiagonal);
-            sw.Stop();
+            _timingStopwatch.Stop();
         }
 
         var visited = result.VisitedNodes;
-        ICollection<Node> emptyList = new List<Node>();
+        var emptyList = new List<Node>();
 
-        DrawMap(map, ref visited, ref emptyList, new Node(0, 0), result.Path);
+        DrawPaths(ref visited, ref emptyList, new Node(0, 0), result.Path);
 
-        NodesVisitedTextBox.Text = result.VisitedNodes.Count.ToString();
-        PathLengthTextBox.Text = result.Path.Count.ToString();
-        TimeTakenTextBox.Text = $"{sw.Elapsed.TotalMilliseconds} ms";
+        NodesVisitedTextBox.Text = result.VisitedNodes.Count().ToString();
+        PathLengthTextBox.Text = $"{result.PathLength} / {result.Path.Count}";
+        TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
     }
 
-    private void Callback(int[,] map, ICollection<Node> visited, ICollection<Node> queue, Node current)
+    /// <summary>
+    /// Luo kartan annetusta tiedostosta ja piirtää sen.
+    /// </summary>
+    /// <param name="pathToMap">Polku tiedostoon. Suhteellinen ja absoluuttinen polku käy</param>
+    private void InitMap(string pathToMap)
+    {
+        _map = Input.ReadMapFromFile(pathToMap);
+        //_map = Input.ReadMapFromImage(pathToMap);
+
+        _bitmap = new WriteableBitmap(new PixelSize(_map.GetLength(0), _map.GetLength(1)), new Vector(96, 96), PixelFormat.Rgb32);
+        VisualizationImage.Source = _bitmap;
+
+        DrawMap(_map);
+    }
+
+    /// <summary>
+    /// Tyhjentää aiemman reitinhaun aikana piirretyn kuvan sekä statistiikat
+    /// </summary>
+    private void ClearPreviousRun()
+    {
+        _bitmap = new WriteableBitmap(new PixelSize(1, 1), new Vector(96, 96), PixelFormat.Rgb32);
+        VisualizationImage.Source = _bitmap;
+
+        DynamicLine.IsVisible = false;
+        NodesVisitedTextBox.Text = "";
+        PathLengthTextBox.Text = "";
+        TimeTakenTextBox.Text = "";
+    }
+
+    /// <summary>
+    /// Palauttaa valitun reitinhakualgoritmin ja heittää InvalidOperationException jos valittu reitti on virheellinen.
+    /// </summary>
+    /// <returns></returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    private IPathFindingAlgorithm GetSelectedAlgorithm()
+    {
+        IPathFindingAlgorithm algorithm = AlgorithmComboBox.SelectedIndex switch
+        {
+            0 => new Dijkstra(_map),
+            1 => new AStar(_map),
+            _ => throw new InvalidOperationException($"Unsupported algorithm: {AlgorithmComboBox.SelectedIndex}")
+        };
+
+        return algorithm;
+    }
+
+    /// <summary>
+    /// Callback funktio kartan piirtämistä varten, joka kutsutaan reitinhakualgoritmissa.
+    /// </summary>
+    /// <param name="visited">Lista kaikista läpikäydyistä pisteistä</param>
+    /// <param name="queue">Lista jonossa olevista pisteistä</param>
+    /// <param name="current">Tällä hetkellä prosessoitavana oleva piste</param>
+    private void Callback(IEnumerable<Node> visited, List<Node> queue, Node current)
     {
         ShouldCallCallback = false;
 
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            DrawMap(map, ref visited, ref queue, current, null);
+            DrawPaths(ref visited, ref queue, current, null);
+            TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
             ShouldCallCallback = true;
         });
     }
 
-    private void DrawEmptyMap(int[,] map)
+    /// <summary>
+    /// Piirtää seinät WriteableBitmap kuvaan annetusta pikselikartasta
+    /// </summary>
+    /// <param name="map">Pikselikartta</param>
+    private void DrawMap(int[,] map)
     {
         using (var frameBuffer = _bitmap.Lock())
         {
@@ -165,7 +249,14 @@ public partial class MainWindow : Window
         VisualizationImage.InvalidateVisual();
     }
 
-    private void DrawMap(int[,] map, ref ICollection<Node> visited, ref ICollection<Node> queue, Node? current, ICollection<Node>? path)
+    /// <summary>
+    /// Piirtää kuljetut reitit WriteableBitmap kuvaan
+    /// </summary>
+    /// <param name="visited">Lista kaikista läpikäydyistä pisteistä</param>
+    /// <param name="queue">Lista jonossa olevista pisteistä</param>
+    /// <param name="current">Tällä hetkellä prosessoitavana oleva piste</param>
+    /// <param name="path">Lyhin läydetty polku jos sitä on olemassa</param>
+    private void DrawPaths(ref IEnumerable<Node> visited, ref List<Node> queue, Node? current, List<Node>? path)
     {
         using (var frameBuffer = _bitmap.Lock())
         {
@@ -174,31 +265,44 @@ public partial class MainWindow : Window
                 uint* buffer = (uint*)frameBuffer.Address.ToPointer();
                 int stride = frameBuffer.RowBytes / sizeof(uint);
 
+                var visitedCount = 0;
                 foreach (var node in visited)
                 {
-                    buffer[node.Y * stride + node.X] = Brushes.LightGreen.Color.ToUInt32();
+                    buffer[node.Y * stride + node.X] = ToBgr(Brushes.LightGreen.Color);
+                    visitedCount++;
                 }
+                NodesVisitedTextBox.Text = visitedCount.ToString();
 
                 foreach (var node in queue)
                 {
-                    buffer[node.Y * stride + node.X] = Brushes.LightBlue.Color.ToUInt32();
+                    buffer[node.Y * stride + node.X] = ToBgr(Brushes.DarkOrange.Color);
                 }
                 
                 if (path != null)
                 {
                     foreach (var node in path)
                     {
-                        buffer[node.Y * stride + node.X] = Brushes.Red.Color.ToUInt32();
+                        buffer[node.Y * stride + node.X] = ToBgr(Brushes.Blue.Color);
                     }
                 }
                 
                 if (current != null)
                 {
-                    buffer[current.Value.Y * stride + current.Value.X] = Brushes.Red.Color.ToUInt32();
+                    buffer[current.Value.Y * stride + current.Value.X] = ToBgr(Brushes.DarkRed.Color);
                 }
             }
         }
 
         VisualizationImage.InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Muuttaa värin BGR muotoon
+    /// </summary>
+    /// <param name="color">Väri joka muunnetaan</param>
+    /// <returns>BGR väri uint muodossa</returns>
+    uint ToBgr(Color color)
+    {
+        return (uint)((color.B << 16) | (color.G << 8) | color.R);
     }
 }

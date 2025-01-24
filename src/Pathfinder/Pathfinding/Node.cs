@@ -16,4 +16,5 @@ public struct Node : IEquatable<Node>
     public static bool operator ==(Node node, Node other) => node.Equals(other);
     public static bool operator !=(Node node, Node other) => !node.Equals(other);
     public override bool Equals(object obj) => obj is Node other && Equals(other);
+    public override int GetHashCode() => HashCode.Combine(X, Y);
 }
