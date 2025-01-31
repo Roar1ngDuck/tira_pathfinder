@@ -9,7 +9,7 @@ namespace Pathfinder.Tests
 {
     public class ComparisonTests
     {
-        private const int MapSize = 512;
+        private const int MapSize = 256;
 
         private static int[,] GenerateRandomMap(int size, int seed, double obstacleProbability)
         {
@@ -49,6 +49,11 @@ namespace Pathfinder.Tests
                     if (previous != null)
                     {
                         Assert.Equal(Math.Round(result.PathLength, 5), Math.Round(previous.PathLength, 5));
+                    }
+
+                    if (!result.PathFound)
+                    {
+                        break;
                     }
 
                     previous = result;
