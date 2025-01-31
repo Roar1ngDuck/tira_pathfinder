@@ -41,6 +41,8 @@ public class Dijkstra(int[,] map) : IPathFindingAlgorithm
         var timingStopwatch = Stopwatch.StartNew();
         long timingNodeCounter = 0;
 
+        Span<(Node neighbor, double cost)> neighbors = new (Node, double)[8];
+
         while (openSet.TryDequeue(out var current, out var priority))
         {
             CallCallbackIfNeeded(ref callbackFunc, ref gScore, ref openSet, ref current);
@@ -51,8 +53,8 @@ public class Dijkstra(int[,] map) : IPathFindingAlgorithm
                 return new PathFindingResult(ExtractVisitedNodes(gScore, openSet), path);
             }
 
-            List<(Node neighbor, double cost)> neighbors = Helpers.GetNeighbors(_map, current, allowDiagonal);
-            ProcessNodeNeighbors(ref neighbors, ref gScore, ref cameFrom, ref openSet, ref current, ref goal);
+            int neighborCount = Helpers.GetNeighbors(_map, current, allowDiagonal, neighbors);
+            ProcessNodeNeighbors(ref neighbors, neighborCount, ref gScore, ref cameFrom, ref openSet, ref current, ref goal);
 
             DelayIfNeeded(ref stepDelay, ref timingStopwatch, ref timingNodeCounter);
             timingNodeCounter++;
@@ -95,15 +97,17 @@ public class Dijkstra(int[,] map) : IPathFindingAlgorithm
     /// Lisää kaikki naapurit jotka johtavat lyhyempään reittiin jonoon
     /// </summary>
     /// <param name="neighbors"></param>
+    /// <param name="neighborCount"></param>
     /// <param name="gScore"></param>
     /// <param name="cameFrom"></param>
     /// <param name="openSet"></param>
     /// <param name="current"></param>
     /// <param name="goal"></param>
-    private static void ProcessNodeNeighbors(ref List<(Node neighbor, double cost)> neighbors, ref double[,] gScore, ref Node?[,] cameFrom, ref PriorityQueue<Node, double> openSet, ref Node current, ref Node goal)
+    private static void ProcessNodeNeighbors(ref Span<(Node neighbor, double cost)> neighbors, int neighborCount, ref double[,] gScore, ref Node?[,] cameFrom, ref PriorityQueue<Node, double> openSet, ref Node current, ref Node goal)
     {
-        foreach (var (neighbor, cost) in neighbors)
+        for (int i = 0; i < neighborCount; i++)
         {
+            var (neighbor, cost) = neighbors[i];
             double tentative_gScore = gScore[current.X, current.Y] + cost;
 
             if (tentative_gScore < gScore[neighbor.X, neighbor.Y])

@@ -20,27 +20,29 @@ public class Helpers
     /// <param name="map">Pikselikartta</param>
     /// <param name="node">Piste jonka naapurit haetaan</param>
     /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot</param>
+    /// <param name="neighbors">Lista johon naapurit kirjoitetaan</param>
     /// <returns></returns>
-    public static List<(Node neighbor, double cost)> GetNeighbors(int[,] map, Node node, bool allowDiagonal)
+    public static int GetNeighbors(int[,] map, Node node, bool allowDiagonal, Span<(Node, double)> neighbors)
     {
-        var neighbors = new List<(Node, double)>();
-
         var directions = allowDiagonal ? directionsDiagonal : directionsStraight;
+        int count = 0;
+        var width = map.GetLength(0);
+        var height = map.GetLength(1);
 
-        foreach (var (dr, dc, cost) in directions)
+        foreach (var (dx, dy, cost) in directions)
         {
-            int newRow = node.X + dr;
-            int newCol = node.Y + dc;
+            int x = node.X + dx;
+            int y = node.Y + dy;
 
-            if (newRow >= 0 && newRow < map.GetLength(0) &&
-                newCol >= 0 && newCol < map.GetLength(1) &&
-                map[newRow, newCol] == 0)
+            if (x >= 0 && x < width &&
+                y >= 0 && y < height &&
+                map[x, y] == 0)
             {
-                neighbors.Add((new Node(newRow, newCol), cost));
+                neighbors[count++] = (new Node(x, y), cost);
             }
         }
 
-        return neighbors;
+        return count;
     }
 
     /// <summary>
@@ -52,10 +54,14 @@ public class Helpers
     public static List<Node> ReconstructPath(Node?[,] cameFrom, Node current)
     {
         var totalPath = new List<Node> { current };
-        while (cameFrom[current.X, current.Y] != null)
+        while (current is not null && cameFrom[current.X, current.Y] is not null)
         {
-            current = cameFrom[current.X, current.Y]!.Value;
-            totalPath.Insert(0, current);
+            current = cameFrom[current.X, current.Y];
+
+            if (current is not null)
+            {
+                totalPath.Insert(0, current);
+            }
         }
         return totalPath;
     }
