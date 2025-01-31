@@ -9,7 +9,7 @@ namespace Pathfinder.Tests
 {
     public class ComparisonTests
     {
-        private const int MapSize = 256;
+        private const int MapSize = 512;
 
         private static int[,] GenerateRandomMap(int size, int seed, double obstacleProbability)
         {
@@ -39,13 +39,20 @@ namespace Pathfinder.Tests
                 var start = new Node(0, 0);
                 var goal = new Node(MapSize - 1, MapSize - 1);
 
-                IPathFindingAlgorithm aStar = new AStar(map);
-                IPathFindingAlgorithm dijkstra = new Dijkstra(map);
+                var algorithms = new IPathFindingAlgorithm[] { new AStar(map), new Dijkstra(map), new JumpPointSearch(map) };
 
-                var aStarResult = aStar.Search(start, goal, allowDiagonal: true);
-                var dijkstraResult = dijkstra.Search(start, goal, allowDiagonal: true);
+                PathFindingResult? previous = null;
+                foreach (var algorithm in algorithms)
+                {
+                    var result = algorithm.Search(start, goal, allowDiagonal: true);
 
-                Assert.Equal(Math.Round(dijkstraResult.PathLength, 5), Math.Round(aStarResult.PathLength, 5));
+                    if (previous != null)
+                    {
+                        Assert.Equal(Math.Round(result.PathLength, 5), Math.Round(previous.PathLength, 5));
+                    }
+
+                    previous = result;
+                }
             }
         }
 
