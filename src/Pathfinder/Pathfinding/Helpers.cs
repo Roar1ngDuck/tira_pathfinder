@@ -31,15 +31,33 @@ public class Helpers
 
         foreach (var (dx, dy, cost) in directions)
         {
-            int x = node.X + dx;
-            int y = node.Y + dy;
+            int nx = node.X + dx;
+            int ny = node.Y + dy;
 
-            if (x >= 0 && x < width &&
-                y >= 0 && y < height &&
-                map[x, y] == 0)
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height)
             {
-                neighbors[count++] = (new Node(x, y), cost);
+                continue;
             }
+            if (map[nx, ny] != 0)
+            {
+                continue;
+            }
+
+            if (allowDiagonal && dx != 0 && dy != 0)
+            {
+                int checkX1 = node.X + dx;
+                int checkY1 = node.Y;
+                int checkX2 = node.X;
+                int checkY2 = node.Y + dy;
+
+                // Diagonaalista siirtoa ei sallista jos siirryttävän ruudun kummallakin puolella on seinä
+                if (map[checkX1, checkY1] != 0 && map[checkX2, checkY2] != 0)
+                {
+                    continue;
+                }
+            }
+
+            neighbors[count++] = (new Node(nx, ny), cost);
         }
 
         return count;

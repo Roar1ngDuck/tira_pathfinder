@@ -27,20 +27,22 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
     public PathFindingResult Search(Node start, Node goal, bool allowDiagonal, Action<IEnumerable<Node>, List<Node>, Node>? callbackFunc, TimeSpan stepDelay)
     {
         var openSet = new PriorityQueue<Node, double>();
-        openSet.Enqueue(start, 0);
 
         var width = _map.GetLength(0);
         var height = _map.GetLength(1);
         var cameFrom = new Node?[width, height];
         var gScore = new double[width, height];
         var fScore = new double[width, height];
+        var closedSet = new bool[width, height];
 
-        Func<Node, Node, double> heurestic = allowDiagonal ? OctagonalDistance : ManhattanDistance;
+        Func<Node, Node, double> heuristic = allowDiagonal ? OctagonalDistance : ManhattanDistance;
 
         InitScoresToMaxValue(ref gScore, ref fScore);
 
         gScore[start.X, start.Y] = 0;
-        fScore[start.X, start.Y] = heurestic(start, goal);
+        fScore[start.X, start.Y] = heuristic(start, goal);
+
+        openSet.Enqueue(start, fScore[start.X, start.Y]);
 
         var timingStopwatch = Stopwatch.StartNew();
         long timingNodeCounter = 0;
@@ -49,6 +51,10 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
 
         while (openSet.TryDequeue(out var current, out var priority))
         {
+            if (closedSet[current.X, current.Y])
+                continue;
+            closedSet[current.X, current.Y] = true;
+
             CallCallbackIfNeeded(ref callbackFunc, ref fScore, ref openSet, ref current);
 
             if (current == goal)
@@ -58,7 +64,7 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
             }
 
             int neighborCount = Helpers.GetNeighbors(_map, current, allowDiagonal, neighbors);
-            ProcessNodeNeighbors(ref neighbors, neighborCount, ref gScore, ref fScore, ref cameFrom, ref openSet, ref current, ref heurestic, ref goal);
+            ProcessNodeNeighbors(ref neighbors, neighborCount, ref gScore, ref fScore, ref cameFrom, ref openSet, ref current, ref heuristic, ref goal);
 
             DelayIfNeeded(ref stepDelay, ref timingStopwatch, ref timingNodeCounter);
             timingNodeCounter++;
@@ -108,9 +114,9 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
     /// <param name="cameFrom"></param>
     /// <param name="openSet"></param>
     /// <param name="current"></param>
-    /// <param name="heurestic"></param>
+    /// <param name="heuristic"></param>
     /// <param name="goal"></param>
-    private static void ProcessNodeNeighbors(ref Span<(Node neighbor, double cost)> neighbors, int neighborCount, ref double[,] gScore, ref double[,] fScore, ref Node?[,] cameFrom, ref PriorityQueue<Node, double> openSet, ref Node current, ref Func<Node, Node, double> heurestic, ref Node goal)
+    private static void ProcessNodeNeighbors(ref Span<(Node neighbor, double cost)> neighbors, int neighborCount, ref double[,] gScore, ref double[,] fScore, ref Node?[,] cameFrom, ref PriorityQueue<Node, double> openSet, ref Node current, ref Func<Node, Node, double> heuristic, ref Node goal)
     {
         for (int i = 0; i < neighborCount; i++)
         {
@@ -121,7 +127,7 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
             {
                 cameFrom[neighbor.X, neighbor.Y] = current;
                 gScore[neighbor.X, neighbor.Y] = tentative_gScore;
-                fScore[neighbor.X, neighbor.Y] = tentative_gScore + heurestic(neighbor, goal);
+                fScore[neighbor.X, neighbor.Y] = tentative_gScore + heuristic(neighbor, goal);
 
                 openSet.Enqueue(neighbor, fScore[neighbor.X, neighbor.Y]);
             }

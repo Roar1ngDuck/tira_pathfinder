@@ -176,16 +176,18 @@ public partial class MainWindow : Window
     /// <param name="pathToMap">Polku tiedostoon. Suhteellinen ja absoluuttinen polku käy</param>
     private void InitMap(string pathToMap)
     {
-        //try
-        //{
-        //    _map = Input.ReadMapFromImage(pathToMap);
-        //}
-        //catch
-        //{
-        //    _map = Input.ReadMapFromFile(pathToMap);
-        //}
+        try
+        {
+            _map = Input.ReadMapFromImage(pathToMap);
+        }
+        catch
+        {
+            _map = Input.ReadMapFromFile(pathToMap);
+        }
 
-        _map = GenerateRandomMap(6, 89, 0.3);
+        //_map = GenerateRandomMap(6, 16, 0.3);
+
+        //_map[2, 2] = 1;
 
         _bitmap = new WriteableBitmap(new PixelSize(_map.GetLength(0), _map.GetLength(1)), new Vector(96, 96), PixelFormat.Rgb32);
         VisualizationImage.Source = _bitmap;
