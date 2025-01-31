@@ -28,11 +28,36 @@ namespace Pathfinder.Pathfinding
             Path = path;
         }
 
+        public PathFindingResult(IEnumerable<(int x, int y)> visitedNodes, List<(int x, int y)>? path)
+        {
+            //VisitedNodes = visitedNodes;
+            //Path = path;
+
+            var visitedNodesList = new List<Node>();
+            foreach (var visited in visitedNodes)
+            {
+                visitedNodesList.Add(new Node(visited.x, visited.y));
+            }
+            VisitedNodes = visitedNodesList;
+            
+            var pathList = new List<Node>();
+            foreach (var point in path)
+            {
+                pathList.Add(new Node(point.x, point.y));
+            }
+            Path = pathList;
+        }
+
         private double CalculatePathLength()
         {
-            if (Path == null)
+            if (Path is null)
             {
                 return 0;
+            }
+
+            if (Path.Last().Cost is not null)
+            {
+                return (double)Path.Last().Cost;
             }
 
             double totalLength = 0;
@@ -52,10 +77,6 @@ namespace Pathfinder.Pathfinding
                 else if (dx == 1 || dy == 1)
                 {
                     totalLength += 1;
-                }
-                else
-                {
-                    throw new InvalidOperationException("Invalid path: Nodes are not adjacent.");
                 }
             }
 

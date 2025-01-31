@@ -97,26 +97,23 @@ public partial class MainWindow : Window
     /// </summary>
     public void StartVisualization()
     {
-        //for (int i = 0; i < 800; i++)
-        {
-            ClearPreviousRun();
+        ClearPreviousRun();
 
-            InitMap(MapTextBox.Text);
+        InitMap(MapTextBox.Text);
 
-            var startNumbers = StartTextBox.Text.Split(',');
-            var start = new Node(int.Parse(startNumbers[0]), int.Parse(startNumbers[1]));
+        var startNumbers = StartTextBox.Text.Split(',');
+        var start = new Node(int.Parse(startNumbers[0]), int.Parse(startNumbers[1]));
 
-            var goalNumbers = GoalTextBox.Text.Split(',');
-            var goal = new Node(int.Parse(goalNumbers[0]), int.Parse(goalNumbers[1]));
+        var goalNumbers = GoalTextBox.Text.Split(',');
+        var goal = new Node(int.Parse(goalNumbers[0]), int.Parse(goalNumbers[1]));
 
-            var algorithm = GetSelectedAlgorithm();
+        var algorithm = GetSelectedAlgorithm();
 
-            var allowDiagonal = AllowDiagonalCheckBox.IsChecked.HasValue && AllowDiagonalCheckBox.IsChecked.Value;
+        var allowDiagonal = AllowDiagonalCheckBox.IsChecked.HasValue && AllowDiagonalCheckBox.IsChecked.Value;
 
-            var stepDelay = Math.Pow(StepDelaySlider.Value, 4);
+        var stepDelay = Math.Pow(StepDelaySlider.Value, 4);
 
-            RunPathfinding(start, goal, algorithm, allowDiagonal, stepDelay);
-        }
+        RunPathfinding(start, goal, algorithm, allowDiagonal, stepDelay);
     }
 
     /// <summary>
@@ -129,30 +126,48 @@ public partial class MainWindow : Window
     /// <param name="stepDelay">Haluttu keskimääräinen viive jokaisen pisteen käsittelylle mikrosekunteina</param>
     private async void RunPathfinding(Node start, Node goal, IPathFindingAlgorithm algorithm, bool allowDiagonal, double stepDelay)
     {
-        PathFindingResult result;
+        //long totalMilliseconds = 0;
 
-        if (stepDelay > 0)
+        //for (int i = 0; i < 100; i++)
         {
-            var stepDelayTimeSpan = TimeSpan.FromMicroseconds(stepDelay);
-            _timingStopwatch = Stopwatch.StartNew();
-            result = await Task.Run(() => algorithm.Search(start, goal, allowDiagonal, Callback, stepDelayTimeSpan));
-            _timingStopwatch.Stop();
+            PathFindingResult result;
+
+            if (stepDelay > 0)
+            {
+                var stepDelayTimeSpan = TimeSpan.FromMicroseconds(stepDelay);
+                _timingStopwatch = Stopwatch.StartNew();
+                result = await Task.Run(() => algorithm.Search(start, goal, allowDiagonal, Callback, stepDelayTimeSpan));
+                _timingStopwatch.Stop();
+            }
+            else
+            {
+                _timingStopwatch = Stopwatch.StartNew();
+                result = algorithm.Search(start, goal, allowDiagonal);
+                _timingStopwatch.Stop();
+
+                //totalMilliseconds += _timingStopwatch.ElapsedMilliseconds;
+            }
+
+            if (!ShouldCallCallback)
+            {
+                await Task.Delay(100);
+            }
+
+            var visited = result.VisitedNodes;
+            var emptyList = new List<Node>();
+
+            DrawPaths(ref visited, ref emptyList, new Node(0, 0), result.Path);
+
+            NodesVisitedTextBox.Text = result.VisitedNodes.Count().ToString();
+            PathLengthTextBox.Text = $"{result.PathLength} / {result.Path?.Count}";
+            if (result.Path != null && result.Path.Last().Cost != null)
+            {
+                PathLengthTextBox.Text += $" = {result.Path.Last().Cost}";
+            }
+            TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
         }
-        else
-        {
-            _timingStopwatch = Stopwatch.StartNew();
-            result = algorithm.Search(start, goal, allowDiagonal);
-            _timingStopwatch.Stop();
-        }
 
-        var visited = result.VisitedNodes;
-        var emptyList = new List<Node>();
-
-        DrawPaths(ref visited, ref emptyList, new Node(0, 0), result.Path);
-
-        NodesVisitedTextBox.Text = result.VisitedNodes.Count().ToString();
-        PathLengthTextBox.Text = $"{result.PathLength} / {result.Path.Count}";
-        TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
+        //TimeTakenTextBox.Text = $"avg: {totalMilliseconds / 100} ms";
     }
 
     /// <summary>
@@ -161,13 +176,37 @@ public partial class MainWindow : Window
     /// <param name="pathToMap">Polku tiedostoon. Suhteellinen ja absoluuttinen polku käy</param>
     private void InitMap(string pathToMap)
     {
-        _map = Input.ReadMapFromFile(pathToMap);
-        //_map = Input.ReadMapFromImage(pathToMap);
+        //try
+        //{
+        //    _map = Input.ReadMapFromImage(pathToMap);
+        //}
+        //catch
+        //{
+        //    _map = Input.ReadMapFromFile(pathToMap);
+        //}
+
+        _map = GenerateRandomMap(6, 89, 0.3);
 
         _bitmap = new WriteableBitmap(new PixelSize(_map.GetLength(0), _map.GetLength(1)), new Vector(96, 96), PixelFormat.Rgb32);
         VisualizationImage.Source = _bitmap;
 
         DrawMap(_map);
+    }
+
+    private static int[,] GenerateRandomMap(int size, int seed, double obstacleProbability)
+    {
+        var random = new Random(seed);
+        var map = new int[size, size];
+
+        for (int x = 0; x < size; x++)
+        {
+            for (int y = 0; y < size; y++)
+            {
+                map[x, y] = random.NextDouble() < obstacleProbability ? 1 : 0;
+            }
+        }
+
+        return map;
     }
 
     /// <summary>
@@ -195,6 +234,7 @@ public partial class MainWindow : Window
         {
             0 => new Dijkstra(_map),
             1 => new AStar(_map),
+            2 => new JumpPointSearch(_map),
             _ => throw new InvalidOperationException($"Unsupported algorithm: {AlgorithmComboBox.SelectedIndex}")
         };
 
@@ -265,6 +305,11 @@ public partial class MainWindow : Window
                 uint* buffer = (uint*)frameBuffer.Address.ToPointer();
                 int stride = frameBuffer.RowBytes / sizeof(uint);
 
+                foreach (var node in queue)
+                {
+                    buffer[node.Y * stride + node.X] = ToBgr(Brushes.DarkOrange.Color);
+                }
+
                 var visitedCount = 0;
                 foreach (var node in visited)
                 {
@@ -273,12 +318,7 @@ public partial class MainWindow : Window
                 }
                 NodesVisitedTextBox.Text = visitedCount.ToString();
 
-                foreach (var node in queue)
-                {
-                    buffer[node.Y * stride + node.X] = ToBgr(Brushes.DarkOrange.Color);
-                }
-                
-                if (path != null)
+                if (path is not null)
                 {
                     foreach (var node in path)
                     {
@@ -286,9 +326,9 @@ public partial class MainWindow : Window
                     }
                 }
                 
-                if (current != null)
+                if (current is not null)
                 {
-                    buffer[current.Value.Y * stride + current.Value.X] = ToBgr(Brushes.DarkRed.Color);
+                    buffer[current.Y * stride + current.X] = ToBgr(Brushes.DarkRed.Color);
                 }
             }
         }

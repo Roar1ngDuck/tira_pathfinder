@@ -23,6 +23,7 @@
             <ComboBox Name="AlgorithmComboBox" SelectedIndex="1" MaxDropDownHeight="100">
                 <ComboBoxItem>Dijkstra</ComboBoxItem>
                 <ComboBoxItem>A*</ComboBoxItem>
+				<ComboBoxItem>JPS</ComboBoxItem>
             </ComboBox>
 
 			<CheckBox Name="AllowDiagonalCheckBox" Content="Allow diagonal moves" />
