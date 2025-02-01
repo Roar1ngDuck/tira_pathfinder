@@ -1,31 +1,32 @@
 Summary
-  Generated on: 01/24/2025 - 16:18:36
-  Coverage date: 01/24/2025 - 16:18:35
-  Parser: Cobertura
+  Generated on: 02/01/2025 - 10:31:03
+  Coverage date: 01/24/2025 - 16:18:35 - 02/01/2025 - 10:31:02
+  Parser: MultiReport (4x Cobertura)
   Assemblies: 1
-  Classes: 9
-  Files: 11
-  Line coverage: 43.4%
-  Covered lines: 214
-  Uncovered lines: 278
-  Coverable lines: 492
-  Total lines: 1015
-  Branch coverage: 51.4% (69 of 134)
-  Covered branches: 69
-  Total branches: 134
-  Method coverage: 52.6% (30 of 57)
-  Full method coverage: 26.3% (15 of 57)
-  Covered methods: 30
-  Fully covered methods: 15
-  Total methods: 57
+  Classes: 10
+  Files: 12
+  Line coverage: 64.1%
+  Covered lines: 749
+  Uncovered lines: 418
+  Coverable lines: 1167
+  Total lines: 1688
+  Branch coverage: 68.7% (370 of 538)
+  Covered branches: 370
+  Total branches: 538
+  Method coverage: 67.3% (95 of 141)
+  Full method coverage: 40.4% (57 of 141)
+  Covered methods: 95
+  Fully covered methods: 57
+  Total methods: 141
 
-Pathfinder                                   43.4%
+Pathfinder                                   64.1%
+  JumpPointSearch                            98.4%
   Pathfinder.App                                0%
   Pathfinder.Input                              0%
   Pathfinder.MainWindow                         0%
-  Pathfinder.Pathfinding.AStar                 86%
-  Pathfinder.Pathfinding.Dijkstra            83.7%
+  Pathfinder.Pathfinding.AStar               86.6%
+  Pathfinder.Pathfinding.Dijkstra              88%
   Pathfinder.Pathfinding.Helpers              100%
-  Pathfinder.Pathfinding.Node                77.7%
-  Pathfinder.Pathfinding.PathFindingResult   90.9%
+  Pathfinder.Pathfinding.Node                65.3%
+  Pathfinder.Pathfinding.PathFindingResult   85.9%
   Pathfinder.Program                            0%
