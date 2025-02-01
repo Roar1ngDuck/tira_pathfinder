@@ -9,4 +9,4 @@ Testit voidaan ajaa käynnistämällä ensin komento ```dotnet build``` jonka j�
 Testeistä voidaan luoda kattavuusraportti seuraavalla komennolla:
 ```dotnet test --collect:"XPlat Code Coverage" && reportgenerator -reports:"src/Pathfinder.Tests/TestResults/*/coverage.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html```
 
-Testien kattavuus [täällä](coveragereport/Summary.txt)
+Testien kattavuus [täällä](/coveragereport/Summary.txt)
