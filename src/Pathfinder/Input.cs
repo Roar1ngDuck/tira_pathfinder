@@ -14,7 +14,7 @@ public class Input
     /// <returns>Pikselikartta 2d int taulukkona</returns>
     public static int[,] ReadMapFromFile(string file)
     {
-        var lines = File.ReadAllLines(file).Where(line => line.Contains('.') || line.Contains('@')).ToArray();
+        var lines = File.ReadAllLines(FixPathFormatting(file)).Where(line => line.Contains('.') || line.Contains('@')).ToArray();
 
         var width = lines[0].Length;
         var height = lines.Length;
@@ -39,9 +39,9 @@ public class Input
     /// </summary>
     /// <param name="file">Polku tiedostoon. Suhteellinen ja absoluuttinen polku käy.</param>
     /// <returns>Pikselikartta 2d int taulukkona</returns>
-    public static int[,] ReadMapFromImage(string filePath)
+    public static int[,] ReadMapFromImage(string file)
     {
-        using var image = Image.Load<L8>(filePath);
+        using var image = Image.Load<L8>(FixPathFormatting(file));
 
         int width = image.Width;
         int height = image.Height;
@@ -59,5 +59,10 @@ public class Input
         }
 
         return map;
+    }
+
+    private static string FixPathFormatting(string path)
+    {
+        return path.Replace("\"", "").Trim();
     }
 }
