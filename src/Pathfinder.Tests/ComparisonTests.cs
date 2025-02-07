@@ -10,7 +10,7 @@ namespace Pathfinder.Tests
 {
     public class ComparisonTests
     {
-        private const int MapSize = 256;
+        private const int MapSize = 512;
 
         private static int[,] GenerateRandomMap(int size, int seed, double obstacleProbability)
         {
@@ -31,7 +31,7 @@ namespace Pathfinder.Tests
         [Fact]
         public void AlgorithmsPathLengthsMatch_Diagonal()
         {
-            for (int i = 10; i < 100; i++)
+            for (int i = 0; i < 100; i++)
             {
                 int seed = i;
                 double obstacleProbability = 0.3;
