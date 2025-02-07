@@ -13,6 +13,7 @@ using Avalonia.Input;
 using System.Linq;
 using Pathfinder.Pathfinding.Algorithms;
 using Avalonia.Controls.Primitives;
+using System.Collections;
 
 namespace Pathfinder;
 
@@ -37,7 +38,12 @@ public partial class MainWindow : Window
     /// <param name="e"></param>
     private void StartButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        StartVisualization();
+        StartVisualization(VisualizationMode.SinglePath);
+    }
+
+    private void RandomPathsButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        StartVisualization(VisualizationMode.RandomPathBenchmark);
     }
 
     /// <summary>
@@ -109,7 +115,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// Aloittaa reitinhaun visualisoinnin
     /// </summary>
-    public void StartVisualization()
+    public void StartVisualization(VisualizationMode mode)
     {
         ClearPreviousRun();
 
@@ -127,7 +133,17 @@ public partial class MainWindow : Window
 
         var stepDelay = Math.Pow(StepDelaySlider.Value, 4);
 
-        RunPathfinding(start, goal, algorithm, allowDiagonal, stepDelay);
+        switch (mode)
+        {
+            case VisualizationMode.SinglePath:
+                RunPathfinding(start, goal, algorithm, allowDiagonal, stepDelay);
+                break;
+            case VisualizationMode.RandomPathBenchmark:
+                RunRandomPathBenchmark(algorithm, allowDiagonal);
+                break;
+        }
+
+        
     }
 
     /// <summary>
@@ -163,13 +179,58 @@ public partial class MainWindow : Window
         }
 
         var visited = result.VisitedNodes;
-        var emptyList = new List<Node>();
+        IEnumerable<Node> emptyList = new List<Node>();
 
         DrawPaths(ref visited, ref emptyList, new Node(0, 0), result.Path);
 
         NodesVisitedTextBox.Text = result.VisitedNodes.Count().ToString();
         PathLengthTextBox.Text = $"{result.PathLength} / {result.Path?.Count}";
         TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
+    }
+
+    private async void RunRandomPathBenchmark(IPathFindingAlgorithm algorithm, bool allowDiagonal)
+    {
+        double totalTimeTaken = 0;
+        var rnd = new Random();
+
+        var randomPathCount = 100;
+        DebugOutputTextBox.Text += $"Benchmarking with {randomPathCount} random paths with {algorithm.GetType().Name}\n";
+
+        for (int i = 0; i < randomPathCount; i++)
+        {
+            PathFindingResult result;
+
+            var start = new Node(rnd.Next(0, _map.GetLength(0)), rnd.Next(0, _map.GetLength(1)));
+            var goal = new Node(rnd.Next(0, _map.GetLength(0)), rnd.Next(0, _map.GetLength(1)));
+
+            DebugOutputTextBox.Text += $"Random path: ({start.X}, {start.Y}) -> ({goal.X}, {goal.Y})\n";
+
+            _timingStopwatch = Stopwatch.StartNew();
+            result = algorithm.Search(start, goal, allowDiagonal);
+            _timingStopwatch.Stop();
+
+            // Käyttöliittymälle jää aikaa piirtää
+            //if (i % 5 == 0)
+            {
+                await Task.Delay(1);
+            }
+
+            var visited = result.VisitedNodes;
+            IEnumerable<Node> emptyList = new List<Node>();
+
+            DrawPaths(ref emptyList, ref emptyList, new Node(0, 0), result.Path);
+
+            DebugOutputTextBox.Text += $"Result: Path found={result.PathFound}, Path length={result.Path?.Count}\n";
+
+            //NodesVisitedTextBox.Text = result.VisitedNodes.Count().ToString();
+            //PathLengthTextBox.Text = $"{result.PathLength} / {result.Path?.Count}";
+            //TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
+
+            totalTimeTaken += _timingStopwatch.Elapsed.TotalMilliseconds;
+        }
+
+        double averageTime = Math.Round(totalTimeTaken / randomPathCount, 4);
+        TimeTakenTextBox.Text = $"Average: {averageTime} ms";
     }
 
     /// <summary>
@@ -231,7 +292,7 @@ public partial class MainWindow : Window
     /// <param name="visited">Lista kaikista läpikäydyistä pisteistä</param>
     /// <param name="queue">Lista jonossa olevista pisteistä</param>
     /// <param name="current">Tällä hetkellä prosessoitavana oleva piste</param>
-    private void Callback(IEnumerable<Node> visited, List<Node> queue, Node current)
+    private void Callback(IEnumerable<Node> visited, IEnumerable<Node> queue, Node current)
     {
         if (!_shouldDrawVisualization)
         {
@@ -285,7 +346,7 @@ public partial class MainWindow : Window
     /// <param name="queue">Lista jonossa olevista pisteistä</param>
     /// <param name="current">Tällä hetkellä prosessoitavana oleva piste</param>
     /// <param name="path">Lyhin läydetty polku jos sitä on olemassa</param>
-    private void DrawPaths(ref IEnumerable<Node> visited, ref List<Node> queue, Node? current, List<Node>? path)
+    private void DrawPaths(ref IEnumerable<Node> visited, ref IEnumerable<Node> queue, Node? current, List<Node>? path)
     {
         using (var frameBuffer = _bitmap.Lock())
         {

@@ -34,6 +34,8 @@
 			
             <Button Click="StartButton_Click">Start</Button>
 
+			<Button Click="RandomPathsButton_Click">Benchmark random paths</Button>
+
             <TextBlock Text="Nodes visited:" />
             <TextBox Name="NodesVisitedTextBox" IsReadOnly="True" VerticalAlignment="Top" />
 
