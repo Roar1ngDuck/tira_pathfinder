@@ -30,7 +30,7 @@
 
 			<TextBlock Text="Step delay:" />
 			<Slider Name="StepDelaySlider" Minimum="0" Maximum="20" 
-					TickFrequency="1" TickPlacement="BottomRight" SmallChange="1" />
+					TickFrequency="1" TickPlacement="BottomRight" SmallChange="1" ValueChanged="Slider_ValueChanged"/>
 			
             <Button Click="StartButton_Click">Start</Button>
 
@@ -42,6 +42,9 @@
 
             <TextBlock Text="Time taken:" />
             <TextBox Name="TimeTakenTextBox" IsReadOnly="True" VerticalAlignment="Top" />
+		
+		     <TextBlock Text="Debug:" />
+            <TextBox Name="DebugOutputTextBox" IsReadOnly="True" VerticalAlignment="Top" Height="400" />
         </StackPanel>
 		<Viewbox Stretch="Uniform">
 			<Grid>

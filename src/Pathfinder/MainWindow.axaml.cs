@@ -11,17 +11,19 @@ using Avalonia.Platform;
 using System.Diagnostics;
 using Avalonia.Input;
 using System.Linq;
+using Pathfinder.Pathfinding.Algorithms;
+using Avalonia.Controls.Primitives;
 
 namespace Pathfinder;
 
 public partial class MainWindow : Window
 {
-    public static bool ShouldCallCallback = true;
-
+    private bool _shouldDrawVisualization = true;
     private WriteableBitmap _bitmap;
     private Point _startPosition;
     private Stopwatch _timingStopwatch;
     private int[,] _map;
+    private StepDelay _stepDelay;
 
     public MainWindow()
     {
@@ -80,6 +82,18 @@ public partial class MainWindow : Window
         }
     }
 
+    private void Slider_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (_stepDelay is null)
+        {
+            return;
+        }
+
+        var stepDelay = Math.Pow(StepDelaySlider.Value, 4);
+        var stepDelayTimeSpan = TimeSpan.FromMicroseconds(stepDelay);
+        _stepDelay.UpdateTargetStepDelay(stepDelayTimeSpan);
+    }
+
     /// <summary>
     /// Piirtää viivan pisteiden välille
     /// </summary>
@@ -126,48 +140,42 @@ public partial class MainWindow : Window
     /// <param name="stepDelay">Haluttu keskimääräinen viive jokaisen pisteen käsittelylle mikrosekunteina</param>
     private async void RunPathfinding(Node start, Node goal, IPathFindingAlgorithm algorithm, bool allowDiagonal, double stepDelay)
     {
-        //long totalMilliseconds = 0;
+        PathFindingResult result;
 
-        //for (int i = 0; i < 100; i++)
+        if (stepDelay > 0)
         {
-            PathFindingResult result;
+            var stepDelayTimeSpan = TimeSpan.FromMicroseconds(stepDelay);
+            _stepDelay = new StepDelay(stepDelayTimeSpan);
+            _timingStopwatch = Stopwatch.StartNew();
+            result = await Task.Run(() => algorithm.Search(start, goal, allowDiagonal, Callback, _stepDelay));
+            _timingStopwatch.Stop();
+        }
+        else
+        {
+            _timingStopwatch = Stopwatch.StartNew();
+            result = algorithm.Search(start, goal, allowDiagonal);
+            _timingStopwatch.Stop();
 
-            if (stepDelay > 0)
-            {
-                var stepDelayTimeSpan = TimeSpan.FromMicroseconds(stepDelay);
-                _timingStopwatch = Stopwatch.StartNew();
-                result = await Task.Run(() => algorithm.Search(start, goal, allowDiagonal, Callback, stepDelayTimeSpan));
-                _timingStopwatch.Stop();
-            }
-            else
-            {
-                _timingStopwatch = Stopwatch.StartNew();
-                result = algorithm.Search(start, goal, allowDiagonal);
-                _timingStopwatch.Stop();
-
-                //totalMilliseconds += _timingStopwatch.ElapsedMilliseconds;
-            }
-
-            if (!ShouldCallCallback)
-            {
-                await Task.Delay(100);
-            }
-
-            var visited = result.VisitedNodes;
-            var emptyList = new List<Node>();
-
-            DrawPaths(ref visited, ref emptyList, new Node(0, 0), result.Path);
-
-            NodesVisitedTextBox.Text = result.VisitedNodes.Count().ToString();
-            PathLengthTextBox.Text = $"{result.PathLength} / {result.Path?.Count}";
-            if (result.Path != null && result.Path.Last().Cost != null)
-            {
-                PathLengthTextBox.Text += $" = {result.Path.Last().Cost}";
-            }
-            TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
+            //totalMilliseconds += _timingStopwatch.ElapsedMilliseconds;
         }
 
-        //TimeTakenTextBox.Text = $"avg: {totalMilliseconds / 100} ms";
+        if (!_shouldDrawVisualization)
+        {
+            await Task.Delay(100);
+        }
+
+        var visited = result.VisitedNodes;
+        var emptyList = new List<Node>();
+
+        DrawPaths(ref visited, ref emptyList, new Node(0, 0), result.Path);
+
+        NodesVisitedTextBox.Text = result.VisitedNodes.Count().ToString();
+        PathLengthTextBox.Text = $"{result.PathLength} / {result.Path?.Count}";
+        if (result.Path != null && result.Path.Last().Cost != null)
+        {
+            PathLengthTextBox.Text += $" = {result.Path.Last().Cost}";
+        }
+        TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
     }
 
     /// <summary>
@@ -185,30 +193,10 @@ public partial class MainWindow : Window
             _map = Input.ReadMapFromFile(pathToMap);
         }
 
-        //_map = GenerateRandomMap(6, 16, 0.3);
-
-        //_map[2, 2] = 1;
-
         _bitmap = new WriteableBitmap(new PixelSize(_map.GetLength(0), _map.GetLength(1)), new Vector(96, 96), PixelFormat.Rgb32);
         VisualizationImage.Source = _bitmap;
 
         DrawMap(_map);
-    }
-
-    private static int[,] GenerateRandomMap(int size, int seed, double obstacleProbability)
-    {
-        var random = new Random(seed);
-        var map = new int[size, size];
-
-        for (int x = 0; x < size; x++)
-        {
-            for (int y = 0; y < size; y++)
-            {
-                map[x, y] = random.NextDouble() < obstacleProbability ? 1 : 0;
-            }
-        }
-
-        return map;
     }
 
     /// <summary>
@@ -251,13 +239,18 @@ public partial class MainWindow : Window
     /// <param name="current">Tällä hetkellä prosessoitavana oleva piste</param>
     private void Callback(IEnumerable<Node> visited, List<Node> queue, Node current)
     {
-        ShouldCallCallback = false;
+        if (!_shouldDrawVisualization)
+        {
+            return;
+        }
+
+        _shouldDrawVisualization = false;
 
         Dispatcher.UIThread.InvokeAsync(() =>
         {
             DrawPaths(ref visited, ref queue, current, null);
             TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
-            ShouldCallCallback = true;
+            _shouldDrawVisualization = true;
         });
     }
 
