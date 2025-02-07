@@ -13,6 +13,8 @@ namespace Pathfinder.Pathfinding.Algorithms;
 public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
 {
     private readonly int[,] _map = map;
+
+    private bool _trackAllVisited = false;
     private List<Node> _allVisited = new List<Node>();
 
     private static readonly (int dx, int dy)[] _directions = new (int dx, int dy)[]
@@ -37,6 +39,12 @@ public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
         Action<IEnumerable<Node>, List<Node>, Node>? callbackFunc,
         StepDelay? stepDelay)
     {
+        // Jos algoritmi seuraa jokaista pistettä mitä on tutkittu, niin se pyörii merkittävästi hitaammin, joten se on päällä vain kun stepDelay on asetettu
+        if (stepDelay is not null)
+        {
+            _trackAllVisited = true;
+        }
+
         var (cameFrom, closedSet, gScore, fScore, openSet) = InitializeSearchDataStructures(start, goal);
 
         while (openSet.Count > 0)
@@ -359,8 +367,6 @@ public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
             {
                 return true;
             }
-
-            _allVisited.Add(new Node(nx, ny));
         }
 
         if (_map[nx, ny] == 1)
@@ -368,7 +374,10 @@ public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
             return true;
         }
 
-        _allVisited.Add(new Node(nx, ny));
+        if (_trackAllVisited)
+        {
+            _allVisited.Add(new Node(nx, ny));
+        }
 
         return false;
     }

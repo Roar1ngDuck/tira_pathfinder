@@ -155,8 +155,6 @@ public partial class MainWindow : Window
             _timingStopwatch = Stopwatch.StartNew();
             result = algorithm.Search(start, goal, allowDiagonal);
             _timingStopwatch.Stop();
-
-            //totalMilliseconds += _timingStopwatch.ElapsedMilliseconds;
         }
 
         if (!_shouldDrawVisualization)
@@ -171,10 +169,6 @@ public partial class MainWindow : Window
 
         NodesVisitedTextBox.Text = result.VisitedNodes.Count().ToString();
         PathLengthTextBox.Text = $"{result.PathLength} / {result.Path?.Count}";
-        if (result.Path != null && result.Path.Last().Cost != null)
-        {
-            PathLengthTextBox.Text += $" = {result.Path.Last().Cost}";
-        }
         TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
     }
 
