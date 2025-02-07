@@ -61,6 +61,26 @@ public class Input
         return map;
     }
 
+    public static bool TryReadMap(string path, out int[,] map)
+    {
+        try
+        {
+            map = ReadMapFromImage(path);
+            return true;
+        }
+        catch { }
+
+        try
+        {
+            map = ReadMapFromFile(path);
+            return true;
+        }
+        catch { }
+
+        map = new int[0,0];
+        return false;
+    }
+
     private static string FixPathFormatting(string path)
     {
         return path.Replace("\"", "").Trim();

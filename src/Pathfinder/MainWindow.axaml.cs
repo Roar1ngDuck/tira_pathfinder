@@ -100,6 +100,36 @@ public partial class MainWindow : Window
         _stepDelay.UpdateTargetStepDelay(stepDelayTimeSpan);
     }
 
+    private void MapTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        var mapPath = MapTextBox.Text;
+        if (mapPath is null)
+        {
+            return;
+        }
+
+        InitMap(mapPath);
+    }
+
+    private void AlgorithmComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (AllowDiagonalCheckBox is null)
+        {
+            return;
+        }
+
+        var selected = GetSelectedAlgorithm();
+        if (selected is JumpPointSearch)
+        {
+            AllowDiagonalCheckBox.IsChecked = true;
+            AllowDiagonalCheckBox.IsEnabled = false;
+        }
+        else
+        {
+            AllowDiagonalCheckBox.IsEnabled = true;
+        }
+    }
+
     /// <summary>
     /// Piirtää viivan pisteiden välille
     /// </summary>
@@ -209,12 +239,6 @@ public partial class MainWindow : Window
             result = algorithm.Search(start, goal, allowDiagonal);
             _timingStopwatch.Stop();
 
-            // Käyttöliittymälle jää aikaa piirtää
-            //if (i % 5 == 0)
-            {
-                await Task.Delay(1);
-            }
-
             var visited = result.VisitedNodes;
             IEnumerable<Node> emptyList = new List<Node>();
 
@@ -239,13 +263,9 @@ public partial class MainWindow : Window
     /// <param name="pathToMap">Polku tiedostoon. Suhteellinen ja absoluuttinen polku käy</param>
     private void InitMap(string pathToMap)
     {
-        try
+        if (!Input.TryReadMap(pathToMap, out _map))
         {
-            _map = Input.ReadMapFromImage(pathToMap);
-        }
-        catch
-        {
-            _map = Input.ReadMapFromFile(pathToMap);
+            return;
         }
 
         _bitmap = new WriteableBitmap(new PixelSize(_map.GetLength(0), _map.GetLength(1)), new Vector(96, 96), PixelFormat.Rgb32);
@@ -269,18 +289,18 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Palauttaa valitun reitinhakualgoritmin ja heittää InvalidOperationException jos valittu reitti on virheellinen.
+    /// Palauttaa valitun reitinhakualgoritmin
     /// </summary>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
     private IPathFindingAlgorithm GetSelectedAlgorithm()
     {
-        IPathFindingAlgorithm algorithm = AlgorithmComboBox.SelectedIndex switch
+        IPathFindingAlgorithm algorithm = AlgorithmComboBox?.SelectedIndex switch
         {
             0 => new Dijkstra(_map),
             1 => new AStar(_map),
             2 => new JumpPointSearch(_map),
-            _ => throw new InvalidOperationException($"Unsupported algorithm: {AlgorithmComboBox.SelectedIndex}")
+            _ => throw new InvalidOperationException($"Unsupported algorithm: {AlgorithmComboBox?.SelectedIndex}")
         };
 
         return algorithm;

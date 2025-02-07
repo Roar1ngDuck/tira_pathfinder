@@ -11,16 +11,19 @@
             <TextBox Name="StatusTextBox" IsReadOnly="True" VerticalAlignment="Top" />
 
             <TextBlock Text="Map:" />
-            <TextBox Name="MapTextBox" VerticalAlignment="Top" />
+            <TextBox Name="MapTextBox" VerticalAlignment="Top" TextChanged="MapTextBox_TextChanged" />
 
             <TextBlock Text="Start:" />
-            <TextBox Name="StartTextBox" VerticalAlignment="Top" />
+			<TextBox Name="StartTextBox" VerticalAlignment="Top" >0,0</TextBox>
 
             <TextBlock Text="Goal:" />
-            <TextBox Name="GoalTextBox" VerticalAlignment="Top" />
+			<TextBox Name="GoalTextBox" VerticalAlignment="Top">0,0</TextBox>
 
 			<TextBlock Text="Algorithm:" />
-            <ComboBox Name="AlgorithmComboBox" SelectedIndex="1" MaxDropDownHeight="100">
+            <ComboBox Name="AlgorithmComboBox" 
+					  SelectedIndex="1" 
+					  MaxDropDownHeight="100" 
+					  SelectionChanged="AlgorithmComboBox_SelectionChanged">
                 <ComboBoxItem>Dijkstra</ComboBoxItem>
                 <ComboBoxItem>A*</ComboBoxItem>
 				<ComboBoxItem>JPS</ComboBoxItem>
