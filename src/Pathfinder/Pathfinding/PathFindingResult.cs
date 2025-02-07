@@ -55,10 +55,10 @@ namespace Pathfinder.Pathfinding
                 return 0;
             }
 
-            if (Path.Last().Cost is not null)
-            {
-                return (double)Path.Last().Cost;
-            }
+            //if (Path.Last().Cost is not null)
+            //{
+            //    return (double)Path.Last().Cost;
+            //}
 
             double totalLength = 0;
 

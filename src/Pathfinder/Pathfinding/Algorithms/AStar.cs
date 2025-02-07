@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace Pathfinder.Pathfinding;
+namespace Pathfinder.Pathfinding.Algorithms;
 
 /// <summary>
 /// A* algoritmi, joka toimii pikselikartoilla
@@ -18,13 +18,13 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
     /// <summary>
     /// Etsii lyhyimmän reitin kartassa lähtäpisteestä maalipisteeseen.
     /// </summary>
-    /// <param name="start">Lähtäpiste</param>
+    /// <param name="start">Lähtöpiste</param>
     /// <param name="goal">Maalipiste</param>
     /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot kartassa</param>
     /// <param name="callbackFunc">Kutsutaan ennen jokaisen pisteen prosessointia</param>
     /// <param name="stepDelay">Haluttu keskimääräinen viive jokaisen pisteen käsittelylle</param>
     /// <returns>PathFindingResult olio joka sisältää reitin sekä kaikki läpi käydyt pisteet</returns>
-    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal, Action<IEnumerable<Node>, List<Node>, Node>? callbackFunc, TimeSpan stepDelay)
+    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal, Action<IEnumerable<Node>, List<Node>, Node>? callbackFunc, StepDelay? stepDelay)
     {
         var openSet = new PriorityQueue<Node, double>();
 
@@ -44,9 +44,6 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
 
         openSet.Enqueue(start, fScore[start.X, start.Y]);
 
-        var timingStopwatch = Stopwatch.StartNew();
-        long timingNodeCounter = 0;
-
         Span<(Node neighbor, double cost)> neighbors = new (Node, double)[8];
 
         while (openSet.TryDequeue(out var current, out var priority))
@@ -55,7 +52,10 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
                 continue;
             closedSet[current.X, current.Y] = true;
 
-            CallCallbackIfNeeded(ref callbackFunc, ref fScore, ref openSet, ref current);
+            callbackFunc?.Invoke(
+                ExtractVisitedNodes(fScore, openSet).ToList(),
+                openSet.UnorderedItems.Select(item => item.Element).ToList(),
+                current);
 
             if (current == goal)
             {
@@ -66,11 +66,22 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
             int neighborCount = Helpers.GetNeighbors(_map, current, allowDiagonal, neighbors);
             ProcessNodeNeighbors(ref neighbors, neighborCount, ref gScore, ref fScore, ref cameFrom, ref openSet, ref current, ref heuristic, ref goal);
 
-            DelayIfNeeded(ref stepDelay, ref timingStopwatch, ref timingNodeCounter);
-            timingNodeCounter++;
+            stepDelay?.Wait();
         }
 
         return new PathFindingResult(ExtractVisitedNodes(fScore, openSet), null);
+    }
+
+    /// <summary>
+    /// Etsii lyhyimmän reitin kartassa lähtäpisteestä maalipisteeseen.
+    /// </summary>
+    /// <param name="start">Lähtäpiste</param>
+    /// <param name="goal">Maalipiste</param>
+    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot kartassa</param>
+    /// <returns>PathFindingResult olio joka sisältää reitin sekä kaikki läpi käydyt pisteet</returns>
+    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal)
+    {
+        return Search(start, goal, allowDiagonal, null, null);
     }
 
     /// <summary>
@@ -85,23 +96,6 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
 
         gSpan.Fill(double.MaxValue);
         fSpan.Fill(double.MaxValue);
-    }
-
-    /// <summary>
-    /// Kutsuu callback funktion jos se on olemassa ja jos ShouldCallCallback on tosi.
-    /// </summary>
-    /// <param name="callbackFunc"></param>
-    /// <param name="fScore"></param>
-    /// <param name="openSet"></param>
-    /// <param name="current"></param>
-    private static void CallCallbackIfNeeded(ref Action<IEnumerable<Node>, List<Node>, Node>? callbackFunc, ref double[,] fScore, ref PriorityQueue<Node, double> openSet, ref Node current)
-    {
-        if (callbackFunc != null && MainWindow.ShouldCallCallback)
-        {
-            var visited = ExtractVisitedNodes(fScore, openSet).ToList();
-            var queue = openSet.UnorderedItems.Select(item => item.Element).ToList();
-            callbackFunc(visited, queue, current);
-        }
     }
 
     /// <summary>
@@ -135,37 +129,6 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
     }
 
     /// <summary>
-    /// Jos haluttu viive on asetettu niin laskee kuluneen ajan perusteella sopivan ajan ja odottaa.
-    /// </summary>
-    /// <param name="stepDelay">Haluttu keskimääräinen viive jokaisen pisteen käsittelylle</param>
-    /// <param name="timingStopwatch">Stopwatch joka mittaa algoritmin käynnissä ollessa kuluneen ajan</param>
-    /// <param name="nodeCounter">Käsiteltyjen pisteiden määrä yhteensä</param>
-    private static void DelayIfNeeded(ref TimeSpan stepDelay, ref Stopwatch timingStopwatch, ref long nodeCounter)
-    {
-        if (stepDelay.TotalMilliseconds > 0)
-        {
-            double elapsedMs = timingStopwatch.Elapsed.TotalMilliseconds;
-            double targetDelay = nodeCounter * stepDelay.TotalMilliseconds;
-            if (elapsedMs < targetDelay)
-            {
-                Thread.Sleep((int)Math.Max(1, targetDelay - elapsedMs));
-            }
-        }
-    }
-
-    /// <summary>
-    /// Etsii lyhyimmän reitin kartassa lähtäpisteestä maalipisteeseen.
-    /// </summary>
-    /// <param name="start">Lähtäpiste</param>
-    /// <param name="goal">Maalipiste</param>
-    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot kartassa</param>
-    /// <returns>PathFindingResult olio joka sisältää reitin sekä kaikki läpi käydyt pisteet</returns>
-    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal)
-    {
-        return Search(start, goal, allowDiagonal, null, TimeSpan.Zero);
-    }
-
-    /// <summary>
     /// Palauttaa etäisyyden pisteesä a pisteeseen b kun voidaan kulkea vain pysty- ja vaakasuoraan.
     /// </summary>
     /// <param name="a"></param>
@@ -174,17 +137,6 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
     private static double ManhattanDistance(Node a, Node b)
     {
         return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
-    }
-
-    /// <summary>
-    /// Palauttaa etäisyyden pisteestä a pisteeseen b.
-    /// </summary>
-    /// <param name="a"></param>
-    /// <param name="b"></param>
-    /// <returns></returns>
-    private static double EuclideanDistance(Node a, Node b)
-    {
-        return Math.Sqrt(Math.Pow(a.X - b.X, 2) + Math.Pow(a.Y - b.Y, 2));
     }
 
     /// <summary>
