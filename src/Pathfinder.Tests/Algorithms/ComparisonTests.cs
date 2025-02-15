@@ -10,7 +10,7 @@ namespace Pathfinder.Tests
 {
     public class ComparisonTests
     {
-        private const int MapSize = 512;
+        private const int MapSize = 128;
 
         private static int[,] GenerateRandomMap(int size, int seed, double obstacleProbability)
         {

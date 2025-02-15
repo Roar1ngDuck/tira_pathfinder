@@ -1,32 +1,36 @@
 Summary
-  Generated on: 02/01/2025 - 10:31:03
-  Coverage date: 01/24/2025 - 16:18:35 - 02/01/2025 - 10:31:02
-  Parser: MultiReport (4x Cobertura)
+  Generated on: 02/15/2025 - 23:15:36
+  Coverage date: 02/15/2025 - 23:15:35
+  Parser: Cobertura
   Assemblies: 1
-  Classes: 10
-  Files: 12
-  Line coverage: 64.1%
-  Covered lines: 749
-  Uncovered lines: 418
-  Coverable lines: 1167
-  Total lines: 1688
-  Branch coverage: 68.7% (370 of 538)
-  Covered branches: 370
-  Total branches: 538
-  Method coverage: 67.3% (95 of 141)
-  Full method coverage: 40.4% (57 of 141)
-  Covered methods: 95
-  Fully covered methods: 57
-  Total methods: 141
+  Classes: 14
+  Files: 19
+  Line coverage: 59.7%
+  Covered lines: 550
+  Uncovered lines: 370
+  Coverable lines: 920
+  Total lines: 1988
+  Branch coverage: 68% (192 of 282)
+  Covered branches: 192
+  Total branches: 282
+  Method coverage: 69.4% (82 of 118)
+  Full method coverage: 39.8% (47 of 118)
+  Covered methods: 82
+  Fully covered methods: 47
+  Total methods: 118
 
-Pathfinder                                   64.1%
-  JumpPointSearch                            98.4%
-  Pathfinder.App                                0%
-  Pathfinder.Input                              0%
-  Pathfinder.MainWindow                         0%
-  Pathfinder.Pathfinding.AStar               86.6%
-  Pathfinder.Pathfinding.Dijkstra              88%
-  Pathfinder.Pathfinding.Helpers              100%
-  Pathfinder.Pathfinding.Node                65.3%
-  Pathfinder.Pathfinding.PathFindingResult   85.9%
-  Pathfinder.Program                            0%
+Pathfinder                                            59.7%
+  Pathfinder.App                                         0%
+  Pathfinder.Helpers.Input                               0%
+  Pathfinder.MainWindow                                  0%
+  Pathfinder.Pathfinding.Algorithms.AStar               99%
+  Pathfinder.Pathfinding.Algorithms.Dijkstra          98.9%
+  Pathfinder.Pathfinding.Algorithms.JumpPointSearch   99.5%
+  Pathfinder.Pathfinding.Node                          100%
+  Pathfinder.Pathfinding.PathFindingResult            96.7%
+  Pathfinder.Pathfinding.StepDelay                       0%
+  Pathfinder.Pathfinding.Utils.ArrayUtils              100%
+  Pathfinder.Pathfinding.Utils.DistanceUtils          68.7%
+  Pathfinder.Pathfinding.Utils.MapUtils                100%
+  Pathfinder.Pathfinding.Utils.PathUtils               100%
+  Pathfinder.Program                                     0%

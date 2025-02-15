@@ -1,25 +1,27 @@
-﻿using Pathfinder.Pathfinding;
+﻿using Xunit;
+using Pathfinder.Pathfinding;
 using Pathfinder.Pathfinding.Algorithms;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Pathfinder.Tests
 {
     public class AStarTests
     {
-        private readonly int[,] _simpleMap = {
-            { 0, 0, 0, 0 },
-            { 0, 1, 1, 0 },
-            { 0, 0, 0, 0 },
-            { 0, 0, 0, 0 }
+        private readonly int[,] _simpleMap =
+        {
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {0, 0, 0, 0},
+            {0, 0, 0, 0}
         };
 
         private readonly Node _start = new Node(0, 0);
         private readonly Node _goal = new Node(3, 3);
 
+        /// <summary>
+        /// Testaa että A* löytää oikean reitin ei-diagonaalisesti
+        /// </summary>
         [Fact]
         public void FindsShortestPath_NonDiagonal()
         {
@@ -31,6 +33,9 @@ namespace Pathfinder.Tests
             Assert.Equal(_goal, result.Path.Last());
         }
 
+        /// <summary>
+        /// Testaa että A* löytää lyhimmän reitin diagonaalisesti
+        /// </summary>
         [Fact]
         public void FindsShortestPath_Diagonal()
         {
@@ -42,14 +47,18 @@ namespace Pathfinder.Tests
             Assert.Equal(_goal, result.Path.Last());
         }
 
+        /// <summary>
+        /// Testaa ettei reittiä löydy, kun sitä ei ole
+        /// </summary>
         [Fact]
         public void ReturnsNoPath_WhenBlocked()
         {
-            var mapWithObstacle = new[,] {
-                { 0, 0, 0, 0 },
-                { 1, 1, 1, 1 },
-                { 0, 0, 0, 0 },
-                { 0, 0, 0, 0 }
+            var mapWithObstacle = new[,]
+            {
+                {0, 0, 0, 0},
+                {1, 1, 1, 1},
+                {0, 0, 0, 0},
+                {0, 0, 0, 0}
             };
 
             var astar = new AStar(mapWithObstacle);
@@ -58,42 +67,55 @@ namespace Pathfinder.Tests
             Assert.Null(result.Path);
         }
 
+        /// <summary>
+        /// Testaa että A* käy läpi oikeat solmut ei-diagonaalisesti
+        /// </summary>
         [Fact]
         public void ExploresExactNodes_NonDiagonal()
         {
             var astar = new AStar(_simpleMap);
             var result = astar.Search(_start, _goal, allowDiagonal: false);
+
             var visited = new HashSet<Node>(result.VisitedNodes);
 
-            var expectedVisited = new HashSet<Node>
+            int[,] expectedGrid =
             {
-                new Node(0, 0),
-                new Node(0, 1), new Node(1, 0),
-                new Node(2, 0), new Node(0, 2),
-                new Node(2, 1), new Node(0, 3),
-                new Node(2, 2), new Node(1, 3),
-                new Node(3, 2), new Node(2, 3),
-                new Node(3, 3)
+                {1,1,1,1},
+                {1,0,0,1},
+                {1,1,1,1},
+                {0,0,1,1}
             };
 
-            Assert.Equal(expectedVisited, visited);
+            var expectedSet = Utils.BuildSetFromGrid(expectedGrid);
+            Assert.Equal(expectedSet, visited);
         }
 
+        /// <summary>
+        /// Testaa että A* käy läpi oikeat solmut diagonaalisesti
+        /// </summary>
         [Fact]
         public void ExploresExactNodes_Diagonal()
         {
             var astar = new AStar(_simpleMap);
             var result = astar.Search(_start, _goal, allowDiagonal: true);
+
             var visited = new HashSet<Node>(result.VisitedNodes);
 
-            var expectedVisited = new HashSet<Node>
+            int[,] expectedGrid =
             {
-                new Node(0, 0), new Node(0, 1), new Node(1, 0), new Node(2, 1), new Node(2, 2), new Node(3, 2), new Node(3, 3)
+                {1,1,0,0},
+                {1,0,0,0},
+                {0,1,1,0},
+                {0,0,1,1}
             };
 
-            Assert.Equal(expectedVisited, visited);
+            var expectedSet = Utils.BuildSetFromGrid(expectedGrid);
+            Assert.Equal(expectedSet, visited);
         }
 
+        /// <summary>
+        /// Testaa että jos start=goal, niin A* palauttaa heti tuloksen
+        /// </summary>
         [Fact]
         public void StartEqualsGoal_ReturnsImmediateResult()
         {
