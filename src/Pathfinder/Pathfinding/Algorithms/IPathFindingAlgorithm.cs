@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Pathfinder.Pathfinding;
+namespace Pathfinder.Pathfinding.Algorithms;
 
 public interface IPathFindingAlgorithm
 {

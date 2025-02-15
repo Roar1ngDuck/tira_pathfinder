@@ -3,7 +3,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using System.IO;
 using System.Linq;
 
-namespace Pathfinder;
+namespace Pathfinder.Helpers;
 
 public class Input
 {

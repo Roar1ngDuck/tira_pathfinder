@@ -1,5 +1,4 @@
-﻿using Pathfinder.Pathfinding;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -7,31 +6,30 @@ using System.Threading;
 namespace Pathfinder.Pathfinding.Algorithms;
 
 /// <summary>
-/// JPS algoritmi, joka toimii pikselikartoilla
+/// Jump Point Search -algoritmi, joka toimii pikselikartoilla.
+/// Huom: JPS olettaa, että vinottaiset liikkeet ovat sallittuja, joten allowDiagonal-parametriä ei käytetä.
 /// </summary>
-/// <param name="map">Pikselikartta hakua varten</param>
+/// <param name="map">Pikselikartta, jossa 0 = kuljettava ruutu ja != 0 = este.</param>
 public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
 {
     private readonly int[,] _map = map;
-
     private bool _trackAllVisited = false;
-    private List<Node> _allVisited = new List<Node>();
 
-    private static readonly (int dx, int dy)[] _directions = new (int dx, int dy)[]
+    private static readonly (int dx, int dy)[] _directions =
     {
         (-1, 0), (1, 0), (0, -1), (0, 1),
         (-1, -1), (-1, 1), (1, -1), (1, 1)
     };
 
     /// <summary>
-    /// Etsii lyhyimmän reitin kartassa lähtäpisteestä maalipisteeseen.
+    /// Etsii lyhyimmän reitin kartassa lähtöpisteestä maalipisteeseen.
     /// </summary>
-    /// <param name="start">Lähtöpiste</param>
-    /// <param name="goal">Maalipiste</param>
-    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot kartassa</param>
-    /// <param name="callbackFunc">Kutsutaan ennen jokaisen pisteen prosessointia</param>
-    /// <param name="stepDelay">Haluttu keskimääräinen viive jokaisen pisteen käsittelylle</param>
-    /// <returns>PathFindingResult olio joka sisältää reitin sekä kaikki läpi käydyt pisteet</returns>
+    /// <param name="start">Lähtöpiste.</param>
+    /// <param name="goal">Maalipiste.</param>
+    /// <param name="allowDiagonal">JPS olettaa, että vinottaiset liikkeet ovat sallittuja, joten allowDiagonal-parametriä ei käytetä.</param>
+    /// <param name="callbackFunc">Kutsutaan ennen jokaisen pisteen käsittelyä. Palauttaa tiedon läpi käydyistä solmuista ja jonossa olevista solmuista, sekä parhaillaan käsiteltävän solmun.
+    /// <param name="stepDelay">Jos asetettu, viivästyttää suorittamista halutulla viiveellä jokaisen solmun käsittelyn jälkeen.
+    /// <returns>PathFindingResult-olio, joka sisältää lopullisen reitin jos sellainen löytyy ja kaikki vieraillut solmut.</returns>
     public PathFindingResult Search(
         Node start,
         Node goal,
@@ -39,187 +37,208 @@ public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
         Action<IEnumerable<Node>, List<Node>, Node>? callbackFunc,
         StepDelay? stepDelay)
     {
-        // Jos algoritmi seuraa jokaista pistettä mitä on tutkittu, niin se pyörii merkittävästi hitaammin, joten se on päällä vain kun stepDelay on asetettu
-        if (stepDelay is not null)
-        {
-            _trackAllVisited = true;
-        }
+        var context = CreateJpsContext(start, goal, callbackFunc, stepDelay);
 
-        var (cameFrom, closedSet, gScore, fScore, openSet) = InitializeSearchDataStructures(start, goal);
-
-        while (openSet.Count > 0)
-        {
-            var current = openSet.Dequeue();
-            closedSet.Add(current);
-
-            callbackFunc?.Invoke(
-                ExtractVisitedNodes(gScore),
-                openSet.UnorderedItems.Select(i => new Node(i.Element.x, i.Element.y)).Union(_allVisited).ToList(),
-                new Node(current.x, current.y));
-
-            var pathResult = CheckForGoalReached(current, goal, cameFrom, start, gScore);
-            if (pathResult != null)
-            {
-                return pathResult;
-            }
-
-            ProcessNodeNeighbors(current, cameFrom, goal, closedSet, gScore, fScore, openSet);
-
-            stepDelay?.Wait();
-        }
-
-        return new PathFindingResult(ExtractVisitedNodes(gScore), null);
+        return PerformJumpPointSearch(context);
     }
 
     /// <summary>
-    /// Etsii lyhyimmän reitin kartassa lähtäpisteestä maalipisteeseen.
+    /// Etsii lyhyimmän reitin kartassa lähtöpisteestä maalipisteeseen.
     /// </summary>
-    /// <param name="start">Lähtäpiste</param>
-    /// <param name="goal">Maalipiste</param>
-    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot kartassa</param>
-    /// <returns>PathFindingResult olio joka sisältää reitin sekä kaikki läpi käydyt pisteet</returns>
+    /// <param name="start">Lähtöpiste.</param>
+    /// <param name="goal">Maalipiste.</param>
+    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot.</param>
+    /// <returns>PathFindingResult-olio, joka sisältää lopullisen reitin jos sellainen löytyy ja kaikki vieraillut solmut.</returns>
     public PathFindingResult Search(Node start, Node goal, bool allowDiagonal)
     {
         return Search(start, goal, allowDiagonal, null, null);
     }
 
     /// <summary>
-    /// Alustaa ja määrittää hakualgoritmia varten tarvittavat tietorakenteet
+    /// Luo ja alustaa hakukontekstin.
     /// </summary>
-    private (
-        Dictionary<(int x, int y), (int x, int y)> cameFrom,
-        HashSet<(int x, int y)> closedSet,
-        Dictionary<(int x, int y), double> gScore,
-        Dictionary<(int x, int y), double> fScore,
-        PriorityQueue<(int x, int y), double> openSet
-    ) InitializeSearchDataStructures(Node start, Node goal)
+    /// <param name="start">Lähtösolmu.</param>
+    /// <param name="goal">Maalisolmu.</param>
+    /// <param name="callbackFunc">Mahdollinen callback-funktio.</param>
+    /// <param name="stepDelay">Mahdollinen käsittelyviive.</param>
+    /// <returns>JpsContext-olio, joka sisältää kaikki tiedot ja rakenteet JPS-hakua varten.</returns>
+    private JpsContext CreateJpsContext(
+        Node start,
+        Node goal,
+        Action<IEnumerable<Node>, List<Node>, Node>? callbackFunc,
+        StepDelay? stepDelay)
     {
-        var cameFrom = new Dictionary<(int x, int y), (int x, int y)>();
-        var closedSet = new HashSet<(int x, int y)>();
-        var gScore = new Dictionary<(int x, int y), double>();
-        var fScore = new Dictionary<(int x, int y), double>();
-        var openSet = new PriorityQueue<(int x, int y), double>();
+        var ctx = new JpsContext
+        {
+            Map = _map,
+            CallbackFunc = callbackFunc,
+            StepDelay = stepDelay,
+            Start = (start.X, start.Y),
+            Goal = (goal.X, goal.Y),
+            CameFrom = new Dictionary<(int x, int y), (int x, int y)>(),
+            ClosedSet = new HashSet<(int x, int y)>(),
+            GScore = new Dictionary<(int x, int y), double>(),
+            FScore = new Dictionary<(int x, int y), double>(),
+            OpenSet = new PriorityQueue<(int x, int y), double>()
+        };
 
-        var startPos = (start.X, start.Y);
-        gScore[startPos] = 0;
-        fScore[startPos] = OctagonalDistance(start.X, start.Y, goal.X, goal.Y);
-        openSet.Enqueue(startPos, fScore[startPos]);
+        ctx.GScore[ctx.Start] = 0;
+        ctx.FScore[ctx.Start] = Utils.DistanceUtils.OctagonalDistance(ctx.Start.x, ctx.Start.y, ctx.Goal.x, ctx.Goal.y);
+        ctx.OpenSet.Enqueue(ctx.Start, ctx.FScore[ctx.Start]);
 
-        return (cameFrom, closedSet, gScore, fScore, openSet);
+        return ctx;
     }
 
     /// <summary>
-    /// Tarkistaa onko nykyinen sijainti maali ja palauttaa reitin jos on
+    /// Suorittaa varsinaisen Jump Point Search haun annetun hakukontekstin avulla.
     /// </summary>
-    private PathFindingResult? CheckForGoalReached(
-        (int x, int y) current,
-        Node goal,
-        Dictionary<(int x, int y), (int x, int y)> cameFrom,
-        Node start,
-        Dictionary<(int x, int y), double> gScore)
+    /// <param name="ctx">JpsContext olio, joka sisältää kaikki tietorakenteet hakua varten.</param>
+    /// <returns>PathFindingResult-olio, joka sisältää lopullisen reitin jos sellainen löytyy ja kaikki vieraillut solmut (IEnumerable&lt;Node&gt;).
+    /// </returns>
+    private PathFindingResult PerformJumpPointSearch(JpsContext ctx)
     {
-        if (current.x == goal.X && current.y == goal.Y)
+        while (ctx.OpenSet.Count > 0)
         {
-            var path = ReconstructPath(cameFrom, start, current);
-            return new PathFindingResult(ExtractVisitedNodes(gScore).Union(_allVisited), path);
+            var current = ctx.OpenSet.Dequeue();
+            ctx.ClosedSet.Add(current);
+
+            ctx.CallbackFunc?.Invoke(
+                Utils.PathUtils.ExtractVisitedNodes(ctx.GScore),
+                ctx.OpenSet.UnorderedItems.Select(i => new Node(i.Element.x, i.Element.y)).ToList(),
+                new Node(current.x, current.y)
+            );
+
+            var pathResult = CheckForGoalReached(current, ctx);
+            if (pathResult != null)
+            {
+                return pathResult;
+            }
+
+            ProcessNodeNeighbors(current, ctx);
+
+            // Mahdollinen viive jokaisen solmun käsittelyn jälkeen, jota käytetään visualisoinnissa.
+            ctx.StepDelay?.Wait();
+        }
+
+        // Jos maalia ei löytynyt, palautetaan tulos ilman polkua.
+        return new PathFindingResult(Utils.PathUtils.ExtractVisitedNodes(ctx.GScore), null);
+    }
+
+    /// <summary>
+    /// Tarkistaa, onko current-koordinaatti sama kuin maalikoordinaatti. Jos on, luo polun ja palauttaa PathFindingResultin.
+    /// </summary>
+    /// <param name="current">Nykyinen piste (x, y).</param>
+    /// <param name="ctx">Hakukonteksti, joka sisältää tarvittavat tietorakenteet.</param>
+    /// <returns>PathFindingResult, jos maali on saavutettu, muuten null.</returns>
+    private PathFindingResult? CheckForGoalReached((int x, int y) current, JpsContext ctx)
+    {
+        if (current == ctx.Goal)
+        {
+            var path = Utils.PathUtils.ReconstructPath(ctx.CameFrom, ctx.Start, current);
+            return new PathFindingResult(
+                Utils.PathUtils.ExtractVisitedNodes(ctx.GScore),
+                path
+            );
         }
         return null;
     }
 
     /// <summary>
-    /// Käsittelee kaikki nykyisen solmun seuraajat
+    /// Prosessoi nykyisen solmun naapurit ja päivittää gScore- ja fScore-arvoja.
     /// </summary>
-    private void ProcessNodeNeighbors(
-        (int x, int y) current,
-        Dictionary<(int x, int y), (int x, int y)> cameFrom,
-        Node goal,
-        HashSet<(int x, int y)> closedSet,
-        Dictionary<(int x, int y), double> gScore,
-        Dictionary<(int x, int y), double> fScore,
-        PriorityQueue<(int x, int y), double> openSet)
+    /// <param name="current">Tällä hetkellä käsiteltävä solmu.</param>
+    /// <param name="ctx">Hakukonteksti, joka sisältää tarvittavat tietorakenteet.</param>
+    private void ProcessNodeNeighbors((int x, int y) current, JpsContext ctx)
     {
-        foreach (var successor in GetValidSuccessors(current, cameFrom, goal))
+        // Haetaan JPS:n mukaiset seuraajat.
+        var successors = GetValidSuccessors(current, ctx);
+        foreach (var successor in successors)
         {
-            if (closedSet.Contains(successor)) continue;
+            if (ctx.ClosedSet.Contains(successor))
+            {
+                continue;
+            }
 
-            UpdateNodeScore(current, successor, gScore, fScore, goal, cameFrom, openSet);
+            UpdateNodeScore(current, successor, ctx);
         }
     }
 
     /// <summary>
-    /// Päivittää solmun pisteet ja sijainnin jonossa annetulle solmulle
+    /// Päivittää solmun pisteet (gScore, fScore) ja sijainnin openSetissä annettulle successor-solmulle.
     /// </summary>
-    private void UpdateNodeScore(
-        (int x, int y) current,
-        (int x, int y) successor,
-        Dictionary<(int x, int y), double> gScore,
-        Dictionary<(int x, int y), double> fScore,
-        Node goal,
-        Dictionary<(int x, int y), (int x, int y)> cameFrom,
-        PriorityQueue<(int x, int y), double> openSet)
+    /// <param name="current">Nykyinen solmu.</param>
+    /// <param name="successor">Seuraaja, jolle pisteet päivitetään.</param>
+    /// <param name="ctx">Hakukonteksti, jolta tiedot haetaan.</param>
+    private void UpdateNodeScore((int x, int y) current, (int x, int y) successor, JpsContext ctx)
     {
-        var tentativeG = gScore[current] + OctagonalDistance(current.x, current.y, successor.x, successor.y);
+        var tentativeG = ctx.GScore[current] + Utils.DistanceUtils.OctagonalDistance(current.x, current.y, successor.x, successor.y);
 
-        if (!gScore.ContainsKey(successor) || tentativeG < gScore[successor])
+        if (!ctx.GScore.ContainsKey(successor) || tentativeG < ctx.GScore[successor])
         {
-            cameFrom[successor] = current;
-            gScore[successor] = tentativeG;
-            fScore[successor] = tentativeG + OctagonalDistance(successor.x, successor.y, goal.X, goal.Y);
-            openSet.Enqueue(successor, fScore[successor]);
+            ctx.CameFrom[successor] = current;
+            ctx.GScore[successor] = tentativeG;
+            ctx.FScore[successor] = tentativeG + Utils.DistanceUtils.OctagonalDistance(successor.x, successor.y, ctx.Goal.x, ctx.Goal.y);
+
+            ctx.OpenSet.Enqueue(successor, ctx.FScore[successor]);
         }
     }
 
     /// <summary>
-    /// Hakee nykyisen solmun seuraajat
+    /// Palauttaa listan solmuista, joihin nykyisestä solmusta voidaan hypätä.
     /// </summary>
-    private List<(int x, int y)> GetValidSuccessors(
-        (int x, int y) current,
-        Dictionary<(int x, int y), (int x, int y)> cameFrom,
-        Node goal)
+    /// <param name="current">Nykyinen solmu (x, y).</param>
+    /// <param name="ctx">Hakukonteksti, jolta tiedot haetaan.</param>
+    /// <returns>Lista koordinaatteja (x, y), joihin hypätä.</returns>
+    private List<(int x, int y)> GetValidSuccessors((int x, int y) current, JpsContext ctx)
     {
         var successors = new List<(int, int)>();
-        var parent = cameFrom.ContainsKey(current) ? cameFrom[current] : ((int x, int y)?)null;
-        var neighbors = GetPrunedNeighbors(current.x, current.y, parent);
+        var parent = ctx.CameFrom.ContainsKey(current) ? ctx.CameFrom[current] : ((int x, int y)?)null;
 
+        // Haetaan naapurit edellisen solmun suunnan perusteella, tai kaikki suunnat, jos aiempaa ei ole.
+        var neighbors = parent == null ? GetInitialNeighbors(current.x, current.y) : GetDirectedNeighbors(current.x, current.y, parent.Value);
+
+        // Suoritetaan jump-toiminto jokaiselle naapurille.
         foreach (var neighbor in neighbors)
         {
-            (int dx, int dy) direction = (neighbor.x - current.x, neighbor.y - current.y);
-            var jumpPoint = Jump(current.x, current.y, direction.dx, direction.dy, goal);
-            if (jumpPoint.HasValue) successors.Add(jumpPoint.Value);
+            var dx = neighbor.x - current.x;
+            var dy = neighbor.y - current.y;
+            var jumpPoint = Jump(current.x, current.y, dx, dy, ctx.Goal, ctx);
+            if (jumpPoint.HasValue)
+            {
+                successors.Add(jumpPoint.Value);
+            }
         }
 
         return successors;
     }
 
     /// <summary>
-    /// Hakee karsitun naapurisolmujen listan
+    /// Palauttaa kaikki validit naapurit aloitustilanteessa, kun edeltäjää ei ole (start-solmu).
     /// </summary>
-    private List<(int x, int y)> GetPrunedNeighbors(int x, int y, (int x, int y)? parent)
-    {
-        return parent == null
-            ? GetInitialNeighbors(x, y)
-            : GetDirectedNeighbors(x, y, parent.Value);
-    }
-
-    /// <summary>
-    /// Hakee kaikki kelvolliset naapurisolmut aloitustilanteessa
-    /// </summary>
+    /// <param name="x">Nykyinen x-koordinaatti.</param>
+    /// <param name="y">Nykyinen y-koordinaatti.</param>
+    /// <returns>Lista naapurikoordinaatteja (x, y).</returns>
     private List<(int x, int y)> GetInitialNeighbors(int x, int y)
     {
         return _directions
-            .Where(d => !IsBlocked(x, y, d.dx, d.dy))
+            .Where(d => !Utils.MapUtils.IsBlocked(_map, x, y, d.dx, d.dy))
             .Select(d => (x + d.dx, y + d.dy))
             .ToList();
     }
 
     /// <summary>
-    /// Hakee naapurisolmut aiemman solmun liikesuunnan perusteella
+    /// Palauttaa karsitun naapurilistan edeltäjän perusteella.
     /// </summary>
+    /// <param name="x">Nykyinen x-koordinaatti.</param>
+    /// <param name="y">Nykyinen y-koordinaatti.</param>
+    /// <param name="parent">Edeltäjän x- ja y-koordinaatit.</param>
+    /// <returns>Lista ohjattuja naapureita (x, y).</returns>
     private List<(int x, int y)> GetDirectedNeighbors(int x, int y, (int px, int py) parent)
     {
         var dx = Math.Sign(x - parent.px);
         var dy = Math.Sign(y - parent.py);
 
+        // Ohjaa liikkeet sen mukaan, missä suunnassa edeltävä solmu sijaitsee.
         return (dx, dy) switch
         {
             (0, _) => GetVerticalNeighbors(x, y, dy),
@@ -229,230 +248,212 @@ public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
     }
 
     /// <summary>
-    /// Hakee naapurisolmut pystysuunnassa
+    /// Palauttaa pystyliikkeeseen validit naapurit.
     /// </summary>
     private List<(int x, int y)> GetVerticalNeighbors(int x, int y, int dy)
     {
         var neighbors = new List<(int, int)>();
-        if (!IsBlocked(x, y, 0, dy))
+        // Suoraan ylös/alas, jos ei estettä
+        if (!Utils.MapUtils.IsBlocked(_map, x, y, 0, dy))
+        {
             neighbors.Add((x, y + dy));
+        }
 
-        // Tarkistetaan pakotetut naapurit molemmilta puolilta
-        if (IsBlocked(x, y, 1, 0) && !IsBlocked(x, y, 1, dy))
+        // Pakotetut naapurit sivuilta
+        if (Utils.MapUtils.IsBlocked(_map, x, y, 1, 0) && !Utils.MapUtils.IsBlocked(_map, x, y, 1, dy))
+        {
             neighbors.Add((x + 1, y + dy));
-        if (IsBlocked(x, y, -1, 0) && !IsBlocked(x, y, -1, dy))
+        }
+        if (Utils.MapUtils.IsBlocked(_map, x, y, -1, 0) && !Utils.MapUtils.IsBlocked(_map, x, y, -1, dy))
+        {
             neighbors.Add((x - 1, y + dy));
+        }
 
         return neighbors;
     }
 
     /// <summary>
-    /// Hakee naapurisolmut vaakasuunnassa
+    /// Palauttaa vaakaliikkeeseen validit naapurit.
     /// </summary>
     private List<(int x, int y)> GetHorizontalNeighbors(int x, int y, int dx)
     {
         var neighbors = new List<(int, int)>();
-        if (!IsBlocked(x, y, dx, 0))
+        // Suoraan vasemmalle/oikealle, jos ei estettä
+        if (!Utils.MapUtils.IsBlocked(_map, x, y, dx, 0))
+        {
             neighbors.Add((x + dx, y));
+        }
 
-        // Tarkistetaan pakotetut naapurisolmut ylä ja alapuolelta
-        if (IsBlocked(x, y, 0, 1) && !IsBlocked(x, y, dx, 1))
+        // Pakotetut naapurit ylä- ja alapuolelta
+        if (Utils.MapUtils.IsBlocked(_map, x, y, 0, 1) && !Utils.MapUtils.IsBlocked(_map, x, y, dx, 1))
+        {
             neighbors.Add((x + dx, y + 1));
-        if (IsBlocked(x, y, 0, -1) && !IsBlocked(x, y, dx, -1))
+        }
+        if (Utils.MapUtils.IsBlocked(_map, x, y, 0, -1) && !Utils.MapUtils.IsBlocked(_map, x, y, dx, -1))
+        {
             neighbors.Add((x + dx, y - 1));
+        }
 
         return neighbors;
     }
 
     /// <summary>
-    /// Hakee naapurisolmut diagonaalisessa liikkeessä
+    /// Palauttaa diagonaaliliikkeeseen validit naapurit.
     /// </summary>
     private List<(int x, int y)> GetDiagonalNeighbors(int x, int y, int dx, int dy)
     {
         var neighbors = new List<(int, int)>();
-        if (!IsBlocked(x, y, 0, dy)) neighbors.Add((x, y + dy));
-        if (!IsBlocked(x, y, dx, 0)) neighbors.Add((x + dx, y));
-        if (!IsBlocked(x, y, dx, dy)) neighbors.Add((x + dx, y + dy));
+        // Suoraan diagonaali, jos ei estettä
+        if (!Utils.MapUtils.IsBlocked(_map, x, y, dx, dy))
+        {
+            neighbors.Add((x + dx, y + dy));
+        }
 
-        // Tarkistetaan pakotetut naapurisolmut kohtisuorissa suunnissa
-        if (IsBlocked(x, y, -dx, 0) && !IsBlocked(x, y, 0, dy))
+        // Samassa diagonaalissa ylös/alas ja vasen/oikea
+        if (!Utils.MapUtils.IsBlocked(_map, x, y, 0, dy))
+        {
+            neighbors.Add((x, y + dy));
+        }
+        if (!Utils.MapUtils.IsBlocked(_map, x, y, dx, 0))
+        {
+            neighbors.Add((x + dx, y));
+        }
+
+        // Pakotetut naapurit
+        if (Utils.MapUtils.IsBlocked(_map, x, y, -dx, 0) && !Utils.MapUtils.IsBlocked(_map, x, y, 0, dy))
+        {
             neighbors.Add((x - dx, y + dy));
-        if (IsBlocked(x, y, 0, -dy) && !IsBlocked(x, y, dx, 0))
+        }
+        if (Utils.MapUtils.IsBlocked(_map, x, y, 0, -dy) && !Utils.MapUtils.IsBlocked(_map, x, y, dx, 0))
+        {
             neighbors.Add((x + dx, y - dy));
+        }
 
         return neighbors;
     }
 
     /// <summary>
-    /// Suorittaa jump point haun määritettyyn suuntaan rekursiivisesti
+    /// Suorittaa varsinaisen jump point haun.
     /// </summary>
-    private (int x, int y)? Jump(int x, int y, int dx, int dy, Node goal)
+    /// <param name="x">Nykyinen x-koordinaatti.</param>
+    /// <param name="y">Nykyinen y-koordinaatti.</param>
+    /// <param name="dx">Liikesuunta x-akselilla.</param>
+    /// <param name="dy">Liikesuunta y-akselilla.</param>
+    /// <param name="goal">Maalin sijainti.</param>
+    /// <param name="ctx">Hakukonteksti, josta data saadaan.</param>
+    /// <returns>Koordinaatti (x, y), jos hyppypiste löytyi, tai null.</returns>
+    private (int x, int y)? Jump(int x, int y, int dx, int dy, (int x, int y) goal, JpsContext ctx)
     {
-        var (nx, ny) = (x + dx, y + dy);
-        if (IsBlocked(x, y, dx, dy))
+        var nx = x + dx;
+        var ny = y + dy;
+
+        if (Utils.MapUtils.IsBlocked(_map, x, y, dx, dy))
         {
             return null;
         }
-        if (nx == goal.X && ny == goal.Y)
+
+        if (nx == goal.x && ny == goal.y)
         {
             return (nx, ny);
         }
 
-        return (dx, dy) switch
+        // Jatketaan sen mukaan, missä suunnassa liikutaan (vaaka/pysty/diagonaali).
+        if (dx == 0)  // Pysty
         {
-            (0, _) => JumpVertical(nx, ny, dy, goal),
-            (_, 0) => JumpHorizontal(nx, ny, dx, goal),
-            _ => JumpDiagonal(nx, ny, dx, dy, goal)
-        };
-    }
-
-    /// <summary>
-    /// Käsittelee pystysuunnassa jump point hakua
-    /// </summary>
-    private (int x, int y)? JumpVertical(int x, int y, int dy, Node goal)
-    {
-        // Tarkistetaan pakotetut naapurit molemmilta puolilta
-        if ((!IsBlocked(x, y, 1, dy) && IsBlocked(x, y, 1, 0)) ||
-            (!IsBlocked(x, y, -1, dy) && IsBlocked(x, y, -1, 0)))
-        {
-            return (x, y);
-        }
-        return Jump(x, y, 0, dy, goal);
-    }
-
-    /// <summary>
-    /// Käsittelee vaakasuunnassa jump point hakua
-    /// </summary>
-    private (int x, int y)? JumpHorizontal(int x, int y, int dx, Node goal)
-    {
-        // Tarkistetaan pakotetut naapurisolmut ylä ja alapuolelta
-        if ((!IsBlocked(x, y, dx, 1) && IsBlocked(x, y, 0, 1)) ||
-            (!IsBlocked(x, y, dx, -1) && IsBlocked(x, y, 0, -1)))
-        {
-            return (x, y);
-        }
-        return Jump(x, y, dx, 0, goal);
-    }
-
-    /// <summary>
-    /// Käsittelee diagonaalisesti jump point hakua
-    /// </summary>
-    private (int x, int y)? JumpDiagonal(int x, int y, int dx, int dy, Node goal)
-    {
-        if ((!IsBlocked(x, y, -dx, dy) && IsBlocked(x, y, -dx, 0)) ||
-            (!IsBlocked(x, y, dx, -dy) && IsBlocked(x, y, 0, -dy)))
-        {
-            return (x, y);
-        }
-
-        if (Jump(x, y, dx, 0, goal) != null || Jump(x, y, 0, dy, goal) != null)
-            return (x, y);
-
-        return Jump(x, y, dx, dy, goal);
-    }
-
-    /// <summary>
-    /// Tarkistaa onko liike koordinaattien välillä estetty esteiden tai kartan reunojen vuoksi
-    /// </summary>
-    private bool IsBlocked(int x, int y, int dx, int dy)
-    {
-        var (nx, ny) = (x + dx, y + dy);
-        if (nx < 0 || ny < 0 || nx >= _map.GetLength(0) || ny >= _map.GetLength(1))
-            return true;
-
-        // Tarkistetaan diagonaaliliike kulmien läpi
-        if (dx != 0 && dy != 0)
-        {
-            if (_map[x + dx, y] == 1 && _map[x, y + dy] == 1 || _map[nx, ny] == 1)
+            if (CheckForcedNeighborVertical(nx, ny, dy))
             {
-                return true;
+                return (nx, ny);
             }
-        }
 
-        if (_map[nx, ny] == 1)
+            // Rekursiivinen kutsu samaan suuntaan
+            return Jump(nx, ny, dx, dy, goal, ctx);
+        }
+        else if (dy == 0)  // Vaaka
+        {
+            if (CheckForcedNeighborHorizontal(nx, ny, dx))
+            {
+                return (nx, ny);
+            }
+
+            return Jump(nx, ny, dx, dy, goal, ctx);
+        }
+        else // Diagonaali
+        {
+            if (CheckForcedNeighborDiagonal(nx, ny, dx, dy))
+            {
+                return (nx, ny);
+            }
+
+            // Katsotaan pysty ja vaaka erikseen
+            if (Jump(nx, ny, dx, 0, goal, ctx) != null ||
+                Jump(nx, ny, 0, dy, goal, ctx) != null)
+            {
+                return (nx, ny);
+            }
+
+            return Jump(nx, ny, dx, dy, goal, ctx);
+        }
+    }
+
+    /// <summary>
+    /// Tarkistaa pakotetut naapurit pystysuunnassa.
+    /// </summary>
+    private bool CheckForcedNeighborVertical(int x, int y, int dy)
+    {
+        // Jos oikealla on este, mutta oikea-ylä/ala ei ole, tai vastaavasti vasemmalla on este mutta vasen-ylä/ala ei ole.
+        if ((!Utils.MapUtils.IsBlocked(_map, x, y, 1, dy) && Utils.MapUtils.IsBlocked(_map, x, y, 1, 0)) ||
+            (!Utils.MapUtils.IsBlocked(_map, x, y, -1, dy) && Utils.MapUtils.IsBlocked(_map, x, y, -1, 0)))
         {
             return true;
         }
-
-        if (_trackAllVisited)
-        {
-            _allVisited.Add(new Node(nx, ny));
-        }
-
         return false;
     }
 
     /// <summary>
-    /// Luo reitin maalista lähtöön
+    /// Tarkistaa pakotetut naapurit vaakasuunnassa.
     /// </summary>
-    private List<Node> ReconstructPath(
-   Dictionary<(int x, int y), (int x, int y)> cameFrom,
-   Node start,
-   (int x, int y) current
-)
+    private bool CheckForcedNeighborHorizontal(int x, int y, int dx)
     {
-        var cur = current;
-        var s = (start.X, start.Y);
-        var path = new List<Node>() { new Node(cur.x, cur.y) };
-
-        while (cameFrom.ContainsKey(cur))
+        // Jos yläpuolella on este, mutta ylä-oikea/vasen ei ole, tai vastaavasti alapuolella on este mutta ala-oikea/vasen ei ole.
+        if ((!Utils.MapUtils.IsBlocked(_map, x, y, dx, 1) && Utils.MapUtils.IsBlocked(_map, x, y, 0, 1)) ||
+            (!Utils.MapUtils.IsBlocked(_map, x, y, dx, -1) && Utils.MapUtils.IsBlocked(_map, x, y, 0, -1)))
         {
-            var parent = cameFrom[cur];
-
-            // Lisätään hypyn pisteiden väliin jäävät pisteet
-            var segment = GetLineBetween(parent.x, parent.y, cur.x, cur.y);
-            path.AddRange(segment);
-
-            path.Add(new Node(parent.x, parent.y));
-
-            cur = parent;
+            return true;
         }
-
-        path.Reverse();
-        return path;
+        return false;
     }
 
     /// <summary>
-    /// Palauttaa pisteet kahden pisteen välillä
+    /// Tarkistaa pakotetut naapurit diagonaalisesti.
     /// </summary>
-    private static List<Node> GetLineBetween(int startX, int startY, int endX, int endY)
+    private bool CheckForcedNeighborDiagonal(int x, int y, int dx, int dy)
     {
-        var result = new List<Node>();
-
-        int dx = Math.Sign(endX - startX);
-        int dy = Math.Sign(endY - startY);
-
-        int steps = Math.Max(Math.Abs(endX - startX), Math.Abs(endY - startY));
-
-        int x = startX;
-        int y = startY;
-
-        for (int i = 0; i < steps - 1; i++)
+        // Jos vasemmalla/takana on este, mutta vinottainen piste ei ole estynyt.
+        if ((!Utils.MapUtils.IsBlocked(_map, x, y, -dx, dy) && Utils.MapUtils.IsBlocked(_map, x, y, -dx, 0)) ||
+            (!Utils.MapUtils.IsBlocked(_map, x, y, dx, -dy) && Utils.MapUtils.IsBlocked(_map, x, y, 0, -dy)))
         {
-            x += dx;
-            y += dy;
-            result.Add(new Node(x, y));
+            return true;
         }
-
-        result.Reverse();
-        return result;
+        return false;
     }
 
     /// <summary>
-    /// Palauttaa etäisyyden pisteestä 1 pisteeseen 2 kun voidaan liikkua 8 suuntaan.
+    /// Sisäinen luokka, joka sisältää Jump Point Search -hakua varten tarvittavat tietorakenteet.
     /// </summary>
-    private static double OctagonalDistance(int x1, int y1, int x2, int y2)
+    private class JpsContext
     {
-        var dx = Math.Abs(x1 - x2);
-        var dy = Math.Abs(y1 - y2);
-        return Math.Max(dx, dy) + (Math.Sqrt(2) - 1) * Math.Min(dx, dy);
-    }
+        public int[,] Map { get; set; }
 
-    /// <summary>
-    /// Palauttaa listan läpikäydyistä pisteistä
-    /// </summary>
-    private IEnumerable<Node> ExtractVisitedNodes(Dictionary<(int x, int y), double> gScore)
-    {
-        return gScore.Keys.Select(p => new Node(p.x, p.y));
+        public Action<IEnumerable<Node>, List<Node>, Node>? CallbackFunc { get; set; }
+        public StepDelay? StepDelay { get; set; }
+
+        public (int x, int y) Start { get; set; }
+        public (int x, int y) Goal { get; set; }
+
+        public Dictionary<(int x, int y), (int x, int y)> CameFrom { get; set; }
+        public HashSet<(int x, int y)> ClosedSet { get; set; }
+        public Dictionary<(int x, int y), double> GScore { get; set; }
+        public Dictionary<(int x, int y), double> FScore { get; set; }
+        public PriorityQueue<(int x, int y), double> OpenSet { get; set; }
     }
 }

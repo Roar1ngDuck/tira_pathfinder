@@ -6,22 +6,20 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Pathfinder
+namespace Pathfinder.Pathfinding
 {
     public class StepDelay
     {
-        Stopwatch _timingStopwatch;
-        long _timingNodeCounter;
+        private Stopwatch _timingStopwatch;
+        private long _timingNodeCounter;
         private TimeSpan _targetStepDelay;
 
         public StepDelay(TimeSpan targetStepDelay)
         {
-            _targetStepDelay = targetStepDelay;
-            _timingStopwatch = Stopwatch.StartNew();
-            _timingNodeCounter = 0;
+            SetTargetStepDelay(targetStepDelay);
         }
 
-        public void UpdateTargetStepDelay(TimeSpan targetStepDelay)
+        public void SetTargetStepDelay(TimeSpan targetStepDelay)
         {
             _targetStepDelay = targetStepDelay;
             _timingStopwatch = Stopwatch.StartNew();

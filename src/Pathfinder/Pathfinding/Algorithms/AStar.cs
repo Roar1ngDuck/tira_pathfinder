@@ -1,231 +1,216 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading;
 
 namespace Pathfinder.Pathfinding.Algorithms;
 
 /// <summary>
-/// A* algoritmi, joka toimii pikselikartoilla
+/// A* algoritmi, joka toimii pikselikartoilla.
 /// </summary>
-/// <param name="map">Pikselikartta hakua varten</param>
+/// <param name="map">Pikselikartta, jossa 0 = kuljettava ruutu ja != 0 = este.</param>
 public class AStar(int[,] map) : IPathFindingAlgorithm
 {
     private readonly int[,] _map = map;
 
-    /// <summary>
-    /// Etsii lyhyimmän reitin kartassa lähtäpisteestä maalipisteeseen.
-    /// </summary>
-    /// <param name="start">Lähtöpiste</param>
-    /// <param name="goal">Maalipiste</param>
-    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot kartassa</param>
-    /// <param name="callbackFunc">Kutsutaan ennen jokaisen pisteen prosessointia</param>
-    /// <param name="stepDelay">Haluttu keskimääräinen viive jokaisen pisteen käsittelylle</param>
-    /// <returns>PathFindingResult olio joka sisältää reitin sekä kaikki läpi käydyt pisteet</returns>
-    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal, Action<IEnumerable<Node>, List<Node>, Node>? callbackFunc, StepDelay? stepDelay)
+    // Siirtymäsuunnat ja niiden kustannukset ilman vinottain liikkumista.
+    private static readonly (int dx, int dy, double cost)[] _directionsStraight =
     {
-        var openSet = new PriorityQueue<Node, double>();
+        (-1, 0, 1), (1, 0, 1), (0, -1, 1), (0, 1, 1)
+    };
 
-        var width = _map.GetLength(0);
-        var height = _map.GetLength(1);
-        var cameFrom = new Node?[width, height];
-        var gScore = new double[width, height];
-        var fScore = new double[width, height];
-        var closedSet = new bool[width, height];
+    // Siirtymäsuunnat ja niiden kustannukset sisältäen vinottain liikkumisen.
+    private static readonly (int dx, int dy, double cost)[] _directionsAll =
+    {
+        (-1, 0, 1), (1, 0, 1), (0, -1, 1), (0, 1, 1), // Suoraan
+        (-1, -1, Math.Sqrt(2)), (-1, 1, Math.Sqrt(2)), // Vinottain
+        (1, -1, Math.Sqrt(2)), (1, 1, Math.Sqrt(2))
+    };
 
-        Func<Node, Node, double> heuristic = allowDiagonal ? OctagonalDistance : ManhattanDistance;
+    /// <summary>
+    /// Etsii lyhyimmän reitin kartassa lähtöpisteestä maalipisteeseen.
+    /// </summary>
+    /// <param name="start">Lähtöpiste.</param>
+    /// <param name="goal">Maalipiste.</param>
+    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot.</param>
+    /// <param name="callbackFunc">Kutsutaan ennen jokaisen pisteen käsittelyä. Palauttaa tiedon läpi käydyistä solmuista ja jonossa olevista solmuista, sekä parhaillaan käsiteltävän solmun.
+    /// <param name="stepDelay">Jos asetettu, viivästyttää suorittamista halutulla viiveellä jokaisen solmun käsittelyn jälkeen.
+    /// <returns>PathFindingResult-olio, joka sisältää lopullisen reitin jos sellainen löytyy ja kaikki vieraillut solmut.</returns>
+    public PathFindingResult Search(
+        Node start,
+        Node goal,
+        bool allowDiagonal,
+        Action<IEnumerable<Node>, List<Node>, Node>? callbackFunc,
+        StepDelay? stepDelay)
+    {
+        var context = CreateSearchContext(start, goal, allowDiagonal, callbackFunc, stepDelay);
 
-        InitScoresToMaxValue(ref gScore, ref fScore);
-
-        gScore[start.X, start.Y] = 0;
-        fScore[start.X, start.Y] = heuristic(start, goal);
-
-        openSet.Enqueue(start, fScore[start.X, start.Y]);
-
-        Span<(Node neighbor, double cost)> neighbors = new (Node, double)[8];
-
-        while (openSet.TryDequeue(out var current, out var priority))
-        {
-            if (closedSet[current.X, current.Y])
-                continue;
-            closedSet[current.X, current.Y] = true;
-
-            callbackFunc?.Invoke(
-                ExtractVisitedNodes(fScore, openSet).ToList(),
-                openSet.UnorderedItems.Select(item => item.Element).ToList(),
-                current);
-
-            if (current == goal)
-            {
-                var path = ReconstructPath(cameFrom, current);
-                return new PathFindingResult(ExtractVisitedNodes(fScore, openSet), path);
-            }
-
-            int neighborCount = GetNeighbors(_map, current, allowDiagonal, neighbors);
-            ProcessNodeNeighbors(ref neighbors, neighborCount, ref gScore, ref fScore, ref cameFrom, ref openSet, ref current, ref heuristic, ref goal);
-
-            stepDelay?.Wait();
-        }
-
-        return new PathFindingResult(ExtractVisitedNodes(fScore, openSet), null);
+        return PerformAStarSearch(context);
     }
 
     /// <summary>
-    /// Etsii lyhyimmän reitin kartassa lähtäpisteestä maalipisteeseen.
+    /// Etsii lyhyimmän reitin kartassa lähtöpisteestä maalipisteeseen.
     /// </summary>
-    /// <param name="start">Lähtäpiste</param>
-    /// <param name="goal">Maalipiste</param>
-    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot kartassa</param>
-    /// <returns>PathFindingResult olio joka sisältää reitin sekä kaikki läpi käydyt pisteet</returns>
+    /// <param name="start">Lähtöpiste.</param>
+    /// <param name="goal">Maalipiste.</param>
+    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot.</param>
+    /// <returns>PathFindingResult-olio, joka sisältää lopullisen reitin jos sellainen löytyy ja kaikki vieraillut solmut.</returns>
     public PathFindingResult Search(Node start, Node goal, bool allowDiagonal)
     {
         return Search(start, goal, allowDiagonal, null, null);
     }
 
     /// <summary>
-    /// Asettaa gScore ja fScore taulukoiden arvot maksimiin
+    /// Suorittaa varsinaisen A*-haun.
     /// </summary>
-    /// <param name="gScore"></param>
-    /// <param name="fScore"></param>
-    private static void InitScoresToMaxValue(ref double[,] gScore, ref double[,] fScore)
+    /// <param name="context">SearchContext olio joka sisältää kartan ja muut haun tietorakenteet.</param>
+    /// <returns>PathFindingResult-olio, joka sisältää lopullisen reitin jos sellainen löytyy ja kaikki vieraillut solmut.</returns>
+    private PathFindingResult PerformAStarSearch(SearchContext context)
     {
-        Span<double> gSpan = MemoryMarshal.CreateSpan(ref gScore[0, 0], gScore.Length);
-        Span<double> fSpan = MemoryMarshal.CreateSpan(ref fScore[0, 0], fScore.Length);
+        Utils.ArrayUtils.InitArrayToMaxValue(context.FScore);
+        Utils.ArrayUtils.InitArrayToMaxValue(context.GScore);
 
-        gSpan.Fill(double.MaxValue);
-        fSpan.Fill(double.MaxValue);
+        SetStartNodeScores(context);
+
+        context.OpenSet.Enqueue(context.Start, context.FScore[context.Start.X, context.Start.Y]);
+
+        Span<(Node neighbor, double cost)> neighborBuffer = new (Node, double)[8];
+
+        while (context.OpenSet.TryDequeue(out var current, out _))
+        {
+            if (context.ClosedSet[current.X, current.Y])
+            {
+                continue;
+            }
+            context.ClosedSet[current.X, current.Y] = true;
+
+            context.CallbackFunc?.Invoke(
+                Utils.PathUtils.ExtractVisitedNodes(context.FScore, context.OpenSet).ToList(),
+                context.OpenSet.UnorderedItems.Select(item => item.Element).ToList(),
+                current);
+
+            if (current == context.Goal)
+            {
+                var path = Utils.PathUtils.ReconstructPath(context.CameFrom, current);
+                return new PathFindingResult(Utils.PathUtils.ExtractVisitedNodes(context.FScore, context.OpenSet), path);
+            }
+
+            int neighborCount = GetNeighbors(_map, current, context.AllowDiagonal, neighborBuffer);
+            ProcessNeighbors(context, neighborBuffer, neighborCount, current);
+
+            // Mahdollinen viive jokaisen solmun käsittelyn jälkeen, jota käytetään visualisoinnissa.
+            context.StepDelay?.Wait();
+        }
+
+        // Jos kaikki avoimet solmut on käsitelty ilman että maalia löytyi, palautetaan tulos ilman polkua.
+        return new PathFindingResult(Utils.PathUtils.ExtractVisitedNodes(context.FScore, context.OpenSet), null);
     }
 
     /// <summary>
-    /// Lisää kaikki naapurit jotka johtavat lyhyempään reittiin jonoon
+    /// Luo hakukontekstin ja tarvittavat tietorakenteet ja asettaa perusarvot
     /// </summary>
-    /// <param name="neighbors"></param>
-    /// <param name="neighborCount"></param>
-    /// <param name="gScore"></param>
-    /// <param name="fScore"></param>
-    /// <param name="cameFrom"></param>
-    /// <param name="openSet"></param>
-    /// <param name="current"></param>
-    /// <param name="heuristic"></param>
-    /// <param name="goal"></param>
-    private static void ProcessNodeNeighbors(ref Span<(Node neighbor, double cost)> neighbors, int neighborCount, ref double[,] gScore, ref double[,] fScore, ref Node?[,] cameFrom, ref PriorityQueue<Node, double> openSet, ref Node current, ref Func<Node, Node, double> heuristic, ref Node goal)
+    /// <param name="start">Lähtösolmu.</param>
+    /// <param name="goal">Maalisolmu.</param>
+    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirtymät.</param>
+    /// <param name="callbackFunc">Mahdollinen callback-funktio.</param>
+    /// <param name="stepDelay">Mahdollinen viive.</param>
+    /// <returns>SearchContext olio, joka sisältää tiedot hakua varten.</returns>
+    private SearchContext CreateSearchContext(
+        Node start,
+        Node goal,
+        bool allowDiagonal,
+        Action<IEnumerable<Node>, List<Node>, Node>? callbackFunc,
+        StepDelay? stepDelay)
+    {
+        var width = _map.GetLength(0);
+        var height = _map.GetLength(1);
+
+        // Valitaan heuristiikkafunktio sen perusteella, sallitanko vinottaiset liikkeet.
+        Func<Node, Node, double> heuristic = allowDiagonal ? Utils.DistanceUtils.OctagonalDistance : Utils.DistanceUtils.ManhattanDistance;
+
+        return new SearchContext
+        {
+            Start = start,
+            Goal = goal,
+            AllowDiagonal = allowDiagonal,
+            CallbackFunc = callbackFunc,
+            StepDelay = stepDelay,
+            CameFrom = new Node?[width, height],
+            GScore = new double[width, height],
+            FScore = new double[width, height],
+            ClosedSet = new bool[width, height],
+            Heuristic = heuristic,
+            OpenSet = new PriorityQueue<Node, double>()
+        };
+    }
+
+    /// <summary>
+    /// Asettaa lähtösolmulle alkuarvot gScoreen ja fScoreen.
+    /// </summary>
+    /// <param name="context">Hakukonteksti, jossa taulukot sijaitsevat.</param>
+    private void SetStartNodeScores(SearchContext context)
+    {
+        context.GScore[context.Start.X, context.Start.Y] = 0;
+        context.FScore[context.Start.X, context.Start.Y] = context.Heuristic(context.Start, context.Goal);
+    }
+
+    /// <summary>
+    /// Käsittelee annetun solmun kaikki naapurit ja päivittää niiden arvoja (gScore, fScore).
+    /// </summary>
+    /// <param name="context">Hakukonteksti josta tiedot ja rakenteet haetaan.</param>
+    /// <param name="neighbors">Taulukko naapureista ja niiden kustannuksista. Kaikki 8 paikkaa ei välttämättä ole käytössä.</param>
+    /// <param name="neighborCount">Kuinka monta naapuria taulukossa oikeasti on.</param>
+    /// <param name="current">Tällä hetkellä käsiteltävä solmu, jonka naapurit prosessoidaan./param>
+    private void ProcessNeighbors(
+        SearchContext context,
+        Span<(Node neighbor, double cost)> neighbors,
+        int neighborCount,
+        Node current)
     {
         for (int i = 0; i < neighborCount; i++)
         {
             var (neighbor, cost) = neighbors[i];
-            double tentative_gScore = gScore[current.X, current.Y] + cost;
+            double tentativeGScore = context.GScore[current.X, current.Y] + cost;
 
-            if (tentative_gScore < gScore[neighbor.X, neighbor.Y])
+            // Jos uuden reitin kustannus on parempi, päivitetään taulukot ja lisätään jonoon.
+            if (tentativeGScore < context.GScore[neighbor.X, neighbor.Y])
             {
-                cameFrom[neighbor.X, neighbor.Y] = current;
-                gScore[neighbor.X, neighbor.Y] = tentative_gScore;
-                fScore[neighbor.X, neighbor.Y] = tentative_gScore + heuristic(neighbor, goal);
+                context.CameFrom[neighbor.X, neighbor.Y] = current;
+                context.GScore[neighbor.X, neighbor.Y] = tentativeGScore;
+                context.FScore[neighbor.X, neighbor.Y] = tentativeGScore +
+                                                         context.Heuristic(neighbor, context.Goal);
 
-                openSet.Enqueue(neighbor, fScore[neighbor.X, neighbor.Y]);
+                context.OpenSet.Enqueue(neighbor, context.FScore[neighbor.X, neighbor.Y]);
             }
         }
     }
 
     /// <summary>
-    /// Palauttaa etäisyyden pisteesä a pisteeseen b kun voidaan kulkea vain pysty- ja vaakasuoraan.
+    /// Etsii kaikki annettavan solmun validit naapurit kartassa.
     /// </summary>
-    /// <param name="a"></param>
-    /// <param name="b"></param>
-    /// <returns></returns>
-    private static double ManhattanDistance(Node a, Node b)
+    /// <param name="map">Pikselikartta, jossa arvo 0 tarkoittaa kuljettavissa olevaa ruutua.</param>
+    /// <param name="node">Kohdesolmu, jonka naapurit halutaan etsiä.</param>
+    /// <param name="allowDiagonal">Sallitaanko myös vinottaiset siirrot.</param>
+    /// <param name="neighbors">Span, johon tallennetaan naapurit (Node, double cost). Oikean lukumäärän saa metodin palautusarvosta.</param>
+    /// <returns>Naapureiden lukumäärä</returns>
+    public static int GetNeighbors(
+        int[,] map,
+        Node node,
+        bool allowDiagonal,
+        Span<(Node, double)> neighbors)
     {
-        return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
-    }
-
-    /// <summary>
-    /// Palauttaa etäisyyden pisteestä a pisteeseen b kun voidaan liikkua 8 suuntaan.
-    /// </summary>
-    /// <param name="a"></param>
-    /// <param name="b"></param>
-    /// <returns></returns>
-    private static double OctagonalDistance(Node a, Node b)
-    {
-        double dx = Math.Abs(a.X - b.X);
-        double dy = Math.Abs(a.Y - b.Y);
-        return Math.Max(dx, dy) + (Math.Sqrt(2) - 1) * Math.Min(dx, dy);
-    }
-
-    /// <summary>
-    /// Palauttaa listan läpikäydyistä pisteistä
-    /// </summary>
-    /// <param name="fScore"></param>
-    /// <param name="openSet"></param>
-    /// <returns></returns>
-    private static IEnumerable<Node> ExtractVisitedNodes(double[,] fScore, PriorityQueue<Node, double> openSet)
-    {
-        var visitedNodes = new List<(Node, double)>();
-
-        for (int x = 0; x < fScore.GetLength(0); x++)
-        {
-            for (int y = 0; y < fScore.GetLength(1); y++)
-            {
-                if (fScore[x, y] != double.MaxValue)
-                {
-                    visitedNodes.Add((new Node(x, y), fScore[x, y]));
-                }
-            }
-        }
-
-        var inQueue = openSet.UnorderedItems;
-        return visitedNodes.Except(inQueue).Select(item => item.Item1);
-    }
-
-    private static readonly (int, int, double)[] directionsStraight = [(-1, 0, 1), (1, 0, 1), (0, -1, 1), (0, 1, 1)];
-
-    private static readonly (int, int, double)[] directionsDiagonal = [
-        (-1, 0, 1), (1, 0, 1), (0, -1, 1), (0, 1, 1), // Suoraan
-        (-1, -1, Math.Sqrt(2)), (-1, 1, Math.Sqrt(2)), (1, -1, Math.Sqrt(2)), (1, 1, Math.Sqrt(2)) // Vinottain
-    ];
-
-    /// <summary>
-    /// Etsii kaikki pisteen validit naapurit kartassa
-    /// </summary>
-    /// <param name="map">Pikselikartta</param>
-    /// <param name="node">Piste jonka naapurit haetaan</param>
-    /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot</param>
-    /// <param name="neighbors">Lista johon naapurit kirjoitetaan</param>
-    /// <returns></returns>
-    public static int GetNeighbors(int[,] map, Node node, bool allowDiagonal, Span<(Node, double)> neighbors)
-    {
-        var directions = allowDiagonal ? directionsDiagonal : directionsStraight;
+        var directions = allowDiagonal ? _directionsAll : _directionsStraight;
         int count = 0;
-        var width = map.GetLength(0);
-        var height = map.GetLength(1);
 
         foreach (var (dx, dy, cost) in directions)
         {
+            if (Utils.MapUtils.IsBlocked(map, node.X, node.Y, dx, dy))
+            {
+                continue;
+            }
+
             int nx = node.X + dx;
             int ny = node.Y + dy;
-
-            if (nx < 0 || nx >= width || ny < 0 || ny >= height)
-            {
-                continue;
-            }
-            if (map[nx, ny] != 0)
-            {
-                continue;
-            }
-
-            if (allowDiagonal && dx != 0 && dy != 0)
-            {
-                int checkX1 = node.X + dx;
-                int checkY1 = node.Y;
-                int checkX2 = node.X;
-                int checkY2 = node.Y + dy;
-
-                // Diagonaalista siirtoa ei sallista jos siirryttävän ruudun kummallakin puolella on seinä
-                if (map[checkX1, checkY1] != 0 && map[checkX2, checkY2] != 0)
-                {
-                    continue;
-                }
-            }
 
             neighbors[count++] = (new Node(nx, ny), cost);
         }
@@ -234,23 +219,22 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
     }
 
     /// <summary>
-    /// Palauttaa kuljetun reitin kyseiseen pisteeseen.
+    /// Sisäinen luokka, joka sisältää kaikki A*-hakua varten tarvittavan tietorakenteet.
     /// </summary>
-    /// <param name="cameFrom">Taulukko tiedosta mistä pisteestä on päästy mihin</param>
-    /// <param name="current">Valittu piste johon kuljettu reitti määritetään</param>
-    /// <returns>Lista kuljetusta reitistä alkaen alkupisteestä</returns>
-    public static List<Node> ReconstructPath(Node?[,] cameFrom, Node current)
+    private class SearchContext
     {
-        var totalPath = new List<Node> { current };
-        while (current is not null && cameFrom[current.X, current.Y] is not null)
-        {
-            current = cameFrom[current.X, current.Y];
+        public Node Start { get; set; }
+        public Node Goal { get; set; }
+        public bool AllowDiagonal { get; set; }
+        public Action<IEnumerable<Node>, List<Node>, Node>? CallbackFunc { get; set; }
+        public StepDelay? StepDelay { get; set; }
 
-            if (current is not null)
-            {
-                totalPath.Insert(0, current);
-            }
-        }
-        return totalPath;
+        public Node?[,] CameFrom { get; set; }
+        public double[,] GScore { get; set; }
+        public double[,] FScore { get; set; }
+        public bool[,] ClosedSet { get; set; }
+        public Func<Node, Node, double> Heuristic { get; set; }
+
+        public PriorityQueue<Node, double> OpenSet { get; set; }
     }
 }
