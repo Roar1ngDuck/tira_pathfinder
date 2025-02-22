@@ -12,7 +12,6 @@ namespace Pathfinder.Pathfinding.Algorithms;
 public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
 {
     private readonly int[,] _map = map;
-    private bool _trackAllVisited = false;
 
     private static readonly (int dx, int dy)[] _directions =
     {

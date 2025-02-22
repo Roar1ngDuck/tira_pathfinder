@@ -37,7 +37,7 @@ namespace Pathfinder.Pathfinding.Utils
             if (dx != 0 && dy != 0)
             {
                 // Molemmissa kulmissa este tai suoraan vinottainen ruutu estää
-                if ((map[x + dx, y] == 1 && map[x, y + dy] == 1) || map[nx, ny] == 1)
+                if (map[nx, y] == 1 && map[x, ny] == 1)
                 {
                     return true;
                 }

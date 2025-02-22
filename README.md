@@ -5,6 +5,7 @@
 - [Määrittelydokumentti](/docs/maarittelydokumentti.md)
 - [Testausdokumentti](/docs/testausdokumentti.md)
 - [Toteutusdokumentti](/docs/toteutusdokumentti.md)
+- [Käyttöohje](/docs/kayttoohje.md)
 
 ## Käynnistys
 
