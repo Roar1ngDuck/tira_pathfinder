@@ -28,6 +28,11 @@ namespace Pathfinder.Pathfinding
 
         public void Wait()
         {
+            if (_targetStepDelay.TotalMilliseconds == 0)
+            {
+                return;
+            }
+
             double elapsedMs = _timingStopwatch.Elapsed.TotalMilliseconds;
             double targetDelay = _timingNodeCounter * _targetStepDelay.TotalMilliseconds;
             if (elapsedMs < targetDelay)

@@ -9,7 +9,7 @@ namespace Pathfinder.Pathfinding.Algorithms;
 /// Jump Point Search -algoritmi, joka toimii pikselikartoilla.
 /// </summary>
 /// <param name="map">Pikselikartta, jossa 0 = kuljettava ruutu ja != 0 = este.</param>
-public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
+public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
 {
     private readonly int[,] _map = map;
 
@@ -28,7 +28,7 @@ public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
     /// <param name="callbackFunc">Kutsutaan ennen jokaisen pisteen käsittelyä. Palauttaa tiedon läpi käydyistä solmuista ja jonossa olevista solmuista, sekä parhaillaan käsiteltävän solmun.
     /// <param name="stepDelay">Jos asetettu, viivästyttää suorittamista halutulla viiveellä jokaisen solmun käsittelyn jälkeen.
     /// <returns>PathFindingResult-olio, joka sisältää lopullisen reitin jos sellainen löytyy ja kaikki vieraillut solmut.</returns>
-    public PathFindingResult Search(
+    public override PathFindingResult Search(
         Node start,
         Node goal,
         bool allowDiagonal,
@@ -47,7 +47,7 @@ public class JumpPointSearch(int[,] map) : IPathFindingAlgorithm
     /// <param name="goal">Maalipiste.</param>
     /// <param name="allowDiagonal">JPS olettaa, että vinottaiset liikkeet ovat sallittuja, joten allowDiagonal-parametriä ei käytetä.</param>
     /// <returns>PathFindingResult-olio, joka sisältää lopullisen reitin jos sellainen löytyy ja kaikki vieraillut solmut.</returns>
-    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal)
+    public override PathFindingResult Search(Node start, Node goal, bool allowDiagonal)
     {
         return Search(start, goal, allowDiagonal, null, null);
     }

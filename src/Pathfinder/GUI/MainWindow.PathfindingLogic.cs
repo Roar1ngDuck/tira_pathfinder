@@ -19,6 +19,7 @@ namespace Pathfinder
         private StepDelay _stepDelay;
         private Stopwatch _timingStopwatch;
         private bool _shouldDrawVisualization = true;
+        private Stopwatch _drawStopwatch;
 
         /// <summary>
         /// Aloittaa reitinhaun visualisoinnin
@@ -40,6 +41,8 @@ namespace Pathfinder
             var allowDiagonal = AllowDiagonalCheckBox.IsChecked.HasValue && AllowDiagonalCheckBox.IsChecked.Value;
 
             var stepDelayValue = Math.Pow(StepDelaySlider.Value, 4);
+
+            _drawStopwatch = Stopwatch.StartNew();
 
             switch (mode)
             {
@@ -63,7 +66,7 @@ namespace Pathfinder
         private async void RunPathfinding(
             Node start, 
             Node goal, 
-            IPathFindingAlgorithm algorithm, 
+            PathFindingAlgorithm algorithm, 
             bool allowDiagonal, 
             double stepDelay)
         {
@@ -105,7 +108,7 @@ namespace Pathfinder
         /// </summary>
         /// <param name="algorithm">Valittu algoritmi</param>
         /// <param name="allowDiagonal">Vinottaiset siirtymät sallittu?</param>
-        private async void RunRandomPathBenchmark(IPathFindingAlgorithm algorithm, bool allowDiagonal)
+        private async void RunRandomPathBenchmark(PathFindingAlgorithm algorithm, bool allowDiagonal)
         {
             double totalTimeTaken = 0;
             var rnd = new Random();
@@ -146,7 +149,7 @@ namespace Pathfinder
         /// </summary>
         /// <returns>Valittu algoritmi</returns>
         /// <exception cref="InvalidOperationException">Heitetään, jos indeksi on tuntematon</exception>
-        private IPathFindingAlgorithm GetSelectedAlgorithm()
+        private PathFindingAlgorithm GetSelectedAlgorithm()
         {
             return AlgorithmComboBox?.SelectedIndex switch
             {
@@ -158,27 +161,30 @@ namespace Pathfinder
             };
         }
 
-		/// <summary>
-		/// Funktio, jota reitinhakualgoritmi kutsuu jokaisen pisteen prosessoinnin yhteydessä. Piirtää tilannekuvan.
-		/// </summary>
-		/// <param name="visited">Kaikki läpikäydyt solmut</param>
-		/// <param name="queue">Jonossa olevat solmut</param>
-		/// <param name="current">Nyt käsittelyssä oleva solmu</param>
-		private void Callback(IEnumerable<Node> visited, IEnumerable<Node> queue, Node current)
+        /// <summary>
+        /// Funktio, jota reitinhakualgoritmi kutsuu jokaisen pisteen prosessoinnin yhteydessä. Piirtää tilannekuvan.
+        /// </summary>
+        /// <param name="visited">Kaikki läpikäydyt solmut</param>
+        /// <param name="queue">Jonossa olevat solmut</param>
+        /// <param name="current">Nyt käsittelyssä oleva solmu</param>
+        private void Callback(IEnumerable<Node> visited, IEnumerable<Node> queue, Node current)
         {
-            if (!_shouldDrawVisualization) { return; }
+            double ms = _drawStopwatch.Elapsed.TotalMilliseconds;
+            //if (ms < 16.6667)
+            if (ms < 16.66)
+            {
+                return;
+            }
+            _drawStopwatch.Restart();
 
-			_shouldDrawVisualization = false;
-			Dispatcher.UIThread.InvokeAsync(() =>
+            Dispatcher.UIThread.InvokeAsync(() =>
             {
                 try
                 {
-					DrawPaths(ref visited, ref queue, current, null);
-					TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
-				}
+                    DrawPaths(ref visited, ref queue, current, null);
+                    TimeTakenTextBox.Text = $"{_timingStopwatch.Elapsed.TotalMilliseconds} ms";
+                }
                 catch { }
-                
-                _shouldDrawVisualization = true;
             });
         }
     }

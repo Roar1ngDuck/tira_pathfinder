@@ -9,7 +9,7 @@ namespace Pathfinder.Pathfinding.Algorithms;
 /// A* algoritmi, joka toimii pikselikartoilla.
 /// </summary>
 /// <param name="map">Pikselikartta, jossa 0 = kuljettava ruutu ja != 0 = este.</param>
-public class AStar(int[,] map) : IPathFindingAlgorithm
+public class AStar(int[,] map) : PathFindingAlgorithm
 {
     private readonly int[,] _map = map;
 
@@ -36,7 +36,7 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
     /// <param name="callbackFunc">Kutsutaan ennen jokaisen pisteen käsittelyä. Palauttaa tiedon läpi käydyistä solmuista ja jonossa olevista solmuista, sekä parhaillaan käsiteltävän solmun.
     /// <param name="stepDelay">Jos asetettu, viivästyttää suorittamista halutulla viiveellä jokaisen solmun käsittelyn jälkeen.
     /// <returns>PathFindingResult-olio, joka sisältää lopullisen reitin jos sellainen löytyy ja kaikki vieraillut solmut.</returns>
-    public PathFindingResult Search(
+    public override PathFindingResult Search(
         Node start,
         Node goal,
         bool allowDiagonal,
@@ -55,7 +55,7 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
     /// <param name="goal">Maalipiste.</param>
     /// <param name="allowDiagonal">Sallitaanko vinottaiset siirrot.</param>
     /// <returns>PathFindingResult-olio, joka sisältää lopullisen reitin jos sellainen löytyy ja kaikki vieraillut solmut.</returns>
-    public PathFindingResult Search(Node start, Node goal, bool allowDiagonal)
+    public override PathFindingResult Search(Node start, Node goal, bool allowDiagonal)
     {
         return Search(start, goal, allowDiagonal, null, null);
     }
@@ -84,10 +84,23 @@ public class AStar(int[,] map) : IPathFindingAlgorithm
             }
             context.ClosedSet[current.X, current.Y] = true;
 
-            context.CallbackFunc?.Invoke(
-                Utils.PathUtils.ExtractVisitedNodes(context.FScore, context.OpenSet).ToList(),
-                context.OpenSet.UnorderedItems.Select(item => item.Element).ToList(),
-                current);
+            if (CallbackInterval.ShouldCallCallback())
+            {
+                context.CallbackFunc?.Invoke(
+                    Utils.PathUtils.ExtractVisitedNodes(context.FScore, context.OpenSet).ToList(),
+                    context.OpenSet.UnorderedItems.Select(item => item.Element).ToList(),
+                    current);
+            }
+
+            //context.CallbackFunc?.Invoke(
+            //    Utils.PathUtils.ExtractVisitedNodes(context.FScore, context.OpenSet).ToList(),
+            //    context.OpenSet.UnorderedItems.Select(item => item.Element).ToList(),
+            //    current);
+
+            //CallCallback(Utils.PathUtils.ExtractVisitedNodes(context.FScore, context.OpenSet).ToList(),
+            //    context.OpenSet.UnorderedItems.Select(item => item.Element).ToList(),
+            //    current,
+            //    context.CallbackFunc);
 
             if (current == context.Goal)
             {
