@@ -35,7 +35,7 @@ namespace Pathfinder
         /// <param name="pathToMap">Karttatiedoston polku</param>
         private void InitMap(string pathToMap)
         {
-            if (!Pathfinder.Helpers.Input.TryReadMap(pathToMap, out _map))
+            if (!Helpers.Input.TryReadMap(pathToMap, out _map))
             {
                 return;
             }
@@ -44,6 +44,10 @@ namespace Pathfinder
                 new PixelSize(_map.GetLength(0), _map.GetLength(1)),
                 new Vector(96, 96),
                 PixelFormat.Rgb32);
+
+            _lastQueue.Clear();
+            _lastVisited.Clear();
+            _lastCurrent.Clear();
 
             VisualizationImage.Source = _bitmap;
             DrawMap(_map);
@@ -94,6 +98,10 @@ namespace Pathfinder
             VisualizationImage.InvalidateVisual();
         }
 
+        HashSet<Node> _lastQueue = new();
+        HashSet<Node> _lastVisited = new();
+        HashSet<Node> _lastCurrent = new();
+
         /// <summary>
         /// Piirtää polkuun liittyvät pisteet (visited, queue, path) bitmap-kuvaan
         /// </summary>
@@ -116,6 +124,12 @@ namespace Pathfinder
                     // Piirretään jonossa olevat oranssilla
                     foreach (var node in queue)
                     {
+                        if (!_lastCurrent.Contains(node) && _lastQueue.Contains(node))
+                        {
+                            continue;
+                        }
+                        _lastQueue.Add(node);
+
                         buffer[node.Y * stride + node.X] = ToBgr(Brushes.DarkOrange.Color);
                     }
 
@@ -123,6 +137,12 @@ namespace Pathfinder
                     var visitedCount = 0;
                     foreach (var node in visited)
                     {
+                        if (!_lastCurrent.Contains(node) && _lastVisited.Contains(node))
+                        {
+                            continue;
+                        }
+                        _lastVisited.Add(node);
+
                         buffer[node.Y * stride + node.X] = ToBgr(Brushes.LightGreen.Color);
                         visitedCount++;
                     }
@@ -140,6 +160,8 @@ namespace Pathfinder
                     // Piirretään nykyinen solmu tummanpunaisella
                     if (current is not null)
                     {
+                        _lastCurrent.Add((Node)current);
+
                         buffer[current.Value.Y * stride + current.Value.X] = ToBgr(Brushes.DarkRed.Color);
                     }
                 }
