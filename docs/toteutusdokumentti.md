@@ -20,8 +20,9 @@ Koodi on [täällä](/src/Pathfinder/Pathfinding/Algorithms/JumpPointSearch.cs)
 
 ## Viitteet
 
-[A* search algorithm](https://en.wikipedia.org/wiki/A*_search_algorithm)
-[Online Graph Pruning for Pathfinding on Grid Maps](https://users.cecs.anu.edu.au/~dharabor/data/papers/harabor-grastien-aaai11.pdf)
-[ICAPS 2014: Daniel Harabor on "Improving Jump Point Search"](https://www.youtube.com/watch?v=NmM4pv8uQwI)
-[A Visual Explanation of Jump Point Search](https://zerowidth.com/2013/a-visual-explanation-of-jump-point-search/)
-[Jump Search Algorithm in Python – A Helpful Guide](https://www.youtube.com/watch?v=afoQvbXvaiQ)
+- [A* search algorithm](https://en.wikipedia.org/wiki/A*_search_algorithm)
+- [Online Graph Pruning for Pathfinding on Grid Maps](https://users.cecs.anu.edu.au/~dharabor/data/papers/harabor-grastien-aaai11.pdf)
+- [ICAPS 2014: Daniel Harabor on "Improving Jump Point Search"](https://www.youtube.com/watch?v=NmM4pv8uQwI)
+- [A Visual Explanation of Jump Point Search](https://zerowidth.com/2013/a-visual-explanation-of-jump-point-search/)
+- [Jump Search Algorithm in Python – A Helpful Guide](https://www.youtube.com/watch?v=afoQvbXvaiQ)
+- [Heuristics](https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html)

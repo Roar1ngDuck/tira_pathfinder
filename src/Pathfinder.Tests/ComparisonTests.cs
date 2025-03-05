@@ -53,7 +53,7 @@ namespace Pathfinder.Tests
                     distance = DistanceUtils.EuclideanDistance(start, goal);
                 }
 
-                var algorithms = new IPathFindingAlgorithm[] { new Dijkstra(map), new AStar(map), new JumpPointSearch(map) };
+                var algorithms = new PathFindingAlgorithm[] { new Dijkstra(map), new AStar(map), new JumpPointSearch(map) };
 
                 PathFindingResult? previous = null;
                 var timingStopwatch = new Stopwatch();

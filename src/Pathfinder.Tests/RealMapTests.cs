@@ -27,7 +27,7 @@ namespace Pathfinder.Tests
                 var start = new Node(rnd.Next(0, MapSize), rnd.Next(0, MapSize));
                 var goal = new Node(rnd.Next(0, MapSize), rnd.Next(0, MapSize));
 
-                var algorithms = new IPathFindingAlgorithm[] { new AStar(map), new Dijkstra(map), new JumpPointSearch(map) };
+                var algorithms = new PathFindingAlgorithm[] { new AStar(map), new Dijkstra(map), new JumpPointSearch(map) };
 
                 PathFindingResult? previous = null;
                 foreach (var algorithm in algorithms)
@@ -60,7 +60,7 @@ namespace Pathfinder.Tests
                 var start = new Node(rnd.Next(0, MapSize), rnd.Next(0, MapSize));
                 var goal = new Node(rnd.Next(0, MapSize), rnd.Next(0, MapSize));
 
-                var algorithms = new IPathFindingAlgorithm[] { new AStar(map), new Dijkstra(map), new JumpPointSearch(map) };
+                var algorithms = new PathFindingAlgorithm[] { new AStar(map), new Dijkstra(map), new JumpPointSearch(map) };
 
                 PathFindingResult? previous = null;
                 foreach (var algorithm in algorithms)
@@ -92,7 +92,7 @@ namespace Pathfinder.Tests
                 var start = new Node(rnd.Next(0, MapSize), rnd.Next(0, MapSize));
                 var goal = new Node(rnd.Next(0, MapSize), rnd.Next(0, MapSize));
 
-                var algorithms = new IPathFindingAlgorithm[] { new AStar(map), new Dijkstra(map), new JumpPointSearch(map) };
+                var algorithms = new PathFindingAlgorithm[] { new AStar(map), new Dijkstra(map), new JumpPointSearch(map) };
 
                 PathFindingResult? previous = null;
                 foreach (var algorithm in algorithms)

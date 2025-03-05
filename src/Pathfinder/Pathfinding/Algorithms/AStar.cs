@@ -92,16 +92,6 @@ public class AStar(int[,] map) : PathFindingAlgorithm
                     current);
             }
 
-            //context.CallbackFunc?.Invoke(
-            //    Utils.PathUtils.ExtractVisitedNodes(context.FScore, context.OpenSet).ToList(),
-            //    context.OpenSet.UnorderedItems.Select(item => item.Element).ToList(),
-            //    current);
-
-            //CallCallback(Utils.PathUtils.ExtractVisitedNodes(context.FScore, context.OpenSet).ToList(),
-            //    context.OpenSet.UnorderedItems.Select(item => item.Element).ToList(),
-            //    current,
-            //    context.CallbackFunc);
-
             if (current == context.Goal)
             {
                 var path = Utils.PathUtils.ReconstructPath(context.CameFrom, current);
@@ -139,7 +129,7 @@ public class AStar(int[,] map) : PathFindingAlgorithm
         var height = _map.GetLength(1);
 
         // Valitaan heuristiikkafunktio sen perusteella, sallitanko vinottaiset liikkeet.
-        Func<Node, Node, double> heuristic = allowDiagonal ? Utils.DistanceUtils.OctagonalDistance : Utils.DistanceUtils.ManhattanDistance;
+        Func<Node, Node, double> heuristic = allowDiagonal ? Utils.DistanceUtils.EuclideanDistance : Utils.DistanceUtils.ManhattanDistance;
 
         return new SearchContext
         {

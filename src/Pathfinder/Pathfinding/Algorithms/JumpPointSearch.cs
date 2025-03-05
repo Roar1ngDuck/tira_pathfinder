@@ -69,6 +69,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
         var ctx = new JpsContext
         {
             Map = _map,
+            TrackAllVisitedNodes = stepDelay is not null,
             CallbackFunc = callbackFunc,
             StepDelay = stepDelay,
             Start = (start.X, start.Y),
@@ -81,7 +82,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
         };
 
         ctx.GScore[ctx.Start] = 0;
-        ctx.FScore[ctx.Start] = Utils.DistanceUtils.OctagonalDistance(ctx.Start.x, ctx.Start.y, ctx.Goal.x, ctx.Goal.y);
+        ctx.FScore[ctx.Start] = Utils.DistanceUtils.EuclideanDistance(ctx.Start.x, ctx.Start.y, ctx.Goal.x, ctx.Goal.y);
         ctx.OpenSet.Enqueue(ctx.Start, ctx.FScore[ctx.Start]);
 
         return ctx;
@@ -100,11 +101,13 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
             var current = ctx.OpenSet.Dequeue();
             ctx.ClosedSet.Add(current);
 
-            ctx.CallbackFunc?.Invoke(
-                Utils.PathUtils.ExtractVisitedNodes(ctx.GScore),
-                ctx.OpenSet.UnorderedItems.Select(i => new Node(i.Element.x, i.Element.y)).ToList(),
-                new Node(current.x, current.y)
-            );
+            if (CallbackInterval.ShouldCallCallback())
+            {
+                ctx.CallbackFunc?.Invoke(
+                    Utils.PathUtils.ExtractVisitedNodes(ctx.GScore).Union(ctx.AllVisitedNodes),
+                    ctx.OpenSet.UnorderedItems.Select(i => new Node(i.Element.x, i.Element.y)).ToList(),
+                    new Node(current.x, current.y));
+            }
 
             var pathResult = CheckForGoalReached(current, ctx);
             if (pathResult != null)
@@ -134,7 +137,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
         {
             var path = Utils.PathUtils.ReconstructPath(ctx.CameFrom, ctx.Start, current);
             return new PathFindingResult(
-                Utils.PathUtils.ExtractVisitedNodes(ctx.GScore),
+                Utils.PathUtils.ExtractVisitedNodes(ctx.GScore).Union(ctx.AllVisitedNodes),
                 path
             );
         }
@@ -169,13 +172,13 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
     /// <param name="ctx">Hakukonteksti, jolta tiedot haetaan.</param>
     private void UpdateNodeScore((int x, int y) current, (int x, int y) successor, JpsContext ctx)
     {
-        var tentativeG = ctx.GScore[current] + Utils.DistanceUtils.OctagonalDistance(current.x, current.y, successor.x, successor.y);
+        var tentativeG = ctx.GScore[current] + Utils.DistanceUtils.EuclideanDistance(current.x, current.y, successor.x, successor.y);
 
         if (!ctx.GScore.ContainsKey(successor) || tentativeG < ctx.GScore[successor])
         {
             ctx.CameFrom[successor] = current;
             ctx.GScore[successor] = tentativeG;
-            ctx.FScore[successor] = tentativeG + Utils.DistanceUtils.OctagonalDistance(successor.x, successor.y, ctx.Goal.x, ctx.Goal.y);
+            ctx.FScore[successor] = tentativeG + Utils.DistanceUtils.EuclideanDistance(successor.x, successor.y, ctx.Goal.x, ctx.Goal.y);
 
             ctx.OpenSet.Enqueue(successor, ctx.FScore[successor]);
         }
@@ -193,7 +196,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
         var parent = ctx.CameFrom.ContainsKey(current) ? ctx.CameFrom[current] : ((int x, int y)?)null;
 
         // Haetaan naapurit edellisen solmun suunnan perusteella, tai kaikki suunnat, jos aiempaa ei ole.
-        var neighbors = parent == null ? GetInitialNeighbors(current.x, current.y) : GetDirectedNeighbors(current.x, current.y, parent.Value);
+        var neighbors = parent == null ? GetInitialNeighbors(current.x, current.y, ctx) : GetDirectedNeighbors(current.x, current.y, parent.Value, ctx);
 
         // Suoritetaan jump-toiminto jokaiselle naapurille.
         foreach (var neighbor in neighbors)
@@ -201,10 +204,17 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
             var dx = neighbor.x - current.x;
             var dy = neighbor.y - current.y;
             var jumpPoint = Jump(current.x, current.y, dx, dy, ctx.Goal, ctx);
-            if (jumpPoint.HasValue)
+            if (!jumpPoint.HasValue)
             {
-                successors.Add(jumpPoint.Value);
+                continue;
             }
+
+            successors.Add((jumpPoint.Value.x, jumpPoint.Value.y));
+        }
+
+        if (ctx.TrackAllVisitedNodes)
+        {
+            ctx.AllVisitedNodes.AddRange(successors.Select(n => new Node(n.Item1, n.Item2)));
         }
 
         return successors;
@@ -216,12 +226,19 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
     /// <param name="x">Nykyinen x-koordinaatti.</param>
     /// <param name="y">Nykyinen y-koordinaatti.</param>
     /// <returns>Lista naapurikoordinaatteja (x, y).</returns>
-    private List<(int x, int y)> GetInitialNeighbors(int x, int y)
+    private List<(int x, int y)> GetInitialNeighbors(int x, int y, JpsContext ctx)
     {
-        return _directions
+        var neighbors = _directions
             .Where(d => !Utils.MapUtils.IsBlocked(_map, x, y, d.dx, d.dy))
             .Select(d => (x + d.dx, y + d.dy))
             .ToList();
+
+        if (ctx.TrackAllVisitedNodes)
+        {
+            ctx.AllVisitedNodes.AddRange(neighbors.Select(n => new Node(n.Item1, n.Item2)));
+        }
+
+        return neighbors;
     }
 
     /// <summary>
@@ -231,7 +248,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
     /// <param name="y">Nykyinen y-koordinaatti.</param>
     /// <param name="parent">Edeltäjän x- ja y-koordinaatit.</param>
     /// <returns>Lista ohjattuja naapureita (x, y).</returns>
-    private List<(int x, int y)> GetDirectedNeighbors(int x, int y, (int px, int py) parent)
+    private List<(int x, int y)> GetDirectedNeighbors(int x, int y, (int px, int py) parent, JpsContext ctx)
     {
         var dx = Math.Sign(x - parent.px);
         var dy = Math.Sign(y - parent.py);
@@ -239,16 +256,16 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
         // Ohjaa liikkeet sen mukaan, missä suunnassa edeltävä solmu sijaitsee.
         return (dx, dy) switch
         {
-            (0, _) => GetVerticalNeighbors(x, y, dy),
-            (_, 0) => GetHorizontalNeighbors(x, y, dx),
-            _ => GetDiagonalNeighbors(x, y, dx, dy)
+            (0, _) => GetVerticalNeighbors(x, y, dy, ctx),
+            (_, 0) => GetHorizontalNeighbors(x, y, dx, ctx),
+            _ => GetDiagonalNeighbors(x, y, dx, dy, ctx)
         };
     }
 
     /// <summary>
     /// Palauttaa pystyliikkeeseen validit naapurit.
     /// </summary>
-    private List<(int x, int y)> GetVerticalNeighbors(int x, int y, int dy)
+    private List<(int x, int y)> GetVerticalNeighbors(int x, int y, int dy, JpsContext ctx)
     {
         var neighbors = new List<(int, int)>();
         // Suoraan ylös/alas, jos ei estettä
@@ -273,7 +290,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
     /// <summary>
     /// Palauttaa vaakaliikkeeseen validit naapurit.
     /// </summary>
-    private List<(int x, int y)> GetHorizontalNeighbors(int x, int y, int dx)
+    private List<(int x, int y)> GetHorizontalNeighbors(int x, int y, int dx, JpsContext ctx)
     {
         var neighbors = new List<(int, int)>();
         // Suoraan vasemmalle/oikealle, jos ei estettä
@@ -298,7 +315,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
     /// <summary>
     /// Palauttaa diagonaaliliikkeeseen validit naapurit.
     /// </summary>
-    private List<(int x, int y)> GetDiagonalNeighbors(int x, int y, int dx, int dy)
+    private List<(int x, int y)> GetDiagonalNeighbors(int x, int y, int dx, int dy, JpsContext ctx)
     {
         var neighbors = new List<(int, int)>();
         // Suoraan diagonaali, jos ei estettä
@@ -350,6 +367,11 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
             return null;
         }
 
+        if (ctx.TrackAllVisitedNodes)
+        {
+            ctx.AllVisitedNodes.Add(new Node(nx, ny));
+        }
+
         if (nx == goal.x && ny == goal.y)
         {
             return (nx, ny);
@@ -382,9 +404,14 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
                 return (nx, ny);
             }
 
-            // Katsotaan pysty ja vaaka erikseen
-            if (Jump(nx, ny, dx, 0, goal, ctx) != null ||
-                Jump(nx, ny, 0, dy, goal, ctx) != null)
+            var hJump = Jump(nx, ny, dx, 0, goal, ctx);
+            if (hJump != null)
+            {
+                return (nx, ny);
+            }
+
+            var vJump = Jump(nx, ny, 0, dy, goal, ctx);
+            if (vJump != null)
             {
                 return (nx, ny);
             }
@@ -441,6 +468,9 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
     private class JpsContext
     {
         public int[,] Map { get; set; }
+
+        public bool TrackAllVisitedNodes { get; set; }
+        public List<Node> AllVisitedNodes { get; set; } = new();
 
         public Action<IEnumerable<Node>, List<Node>, Node>? CallbackFunc { get; set; }
         public StepDelay? StepDelay { get; set; }

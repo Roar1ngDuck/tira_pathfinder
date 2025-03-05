@@ -16,7 +16,6 @@ namespace Pathfinder.Pathfinding.Utils
         /// <param name="y">Nykyinen y-koordinaatti.</param>
         /// <param name="dx">Liikesuunnan x-komponentti.</param>
         /// <param name="dy">Liikesuunnan y-komponentti.</param>
-        /// <param name="allVisited">Kaikki vieraillut solmut.</param>
         /// <returns>True, jos liike estetty. False, jos vapaa.</returns>
         public static bool IsBlocked(int[,] map, int x, int y, int dx, int dy)
         {

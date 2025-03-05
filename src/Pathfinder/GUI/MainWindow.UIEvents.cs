@@ -6,6 +6,9 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Pathfinder.Pathfinding.Algorithms;
 using Pathfinder.GUI;
+using System.Linq;
+using Avalonia.Platform.Storage;
+using System.IO;
 
 namespace Pathfinder
 {
@@ -24,6 +27,44 @@ namespace Pathfinder
         private void StartButton_Click(object? sender, RoutedEventArgs e)
         {
             StartVisualization(VisualizationMode.SinglePath);
+        }
+
+        /// <summary>
+        /// Event handler select file napin klikkausta varten
+        /// </summary>
+        /// <param name="sender">Lähettävä olio</param>
+        /// <param name="e">EventArgs-data</param>
+        private async void SelectFileButton_Click(object? sender, RoutedEventArgs e)
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel is null)
+                return;
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Open Map File",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                new FilePickerFileType("Map Files")
+                {
+                    Patterns = new[] { "*.map" }
+                },
+                new FilePickerFileType("All Files")
+                {
+                    Patterns = new[] { "*.*" }
+                }
+            }
+            });
+
+            if (files?.Count <= 0)
+            {
+                return;
+            }
+
+            var file = files[0];
+
+            MapTextBox.Text = file.Path.AbsolutePath;
         }
 
         /// <summary>
@@ -100,10 +141,12 @@ namespace Pathfinder
         private void MapTextBox_TextChanged(object? sender, TextChangedEventArgs e)
         {
             var mapPath = MapTextBox.Text;
-            if (mapPath is not null)
+            if (mapPath is null)
             {
-                InitMap(mapPath);
+                return;
             }
+
+            InitMap(mapPath);
         }
 
         /// <summary>

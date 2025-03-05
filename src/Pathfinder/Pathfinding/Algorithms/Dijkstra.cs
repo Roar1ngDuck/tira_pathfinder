@@ -76,10 +76,13 @@ public class Dijkstra(int[,] map) : PathFindingAlgorithm
 
         while (context.OpenSet.TryDequeue(out var current, out _))
         {
-            context.CallbackFunc?.Invoke(
-                Utils.PathUtils.ExtractVisitedNodes(context.GScore, context.OpenSet).ToList(),
-                context.OpenSet.UnorderedItems.Select(item => item.Element).ToList(),
-                current);
+            if (CallbackInterval.ShouldCallCallback())
+            {
+                context.CallbackFunc?.Invoke(
+                    Utils.PathUtils.ExtractVisitedNodes(context.GScore, context.OpenSet).ToList(),
+                    context.OpenSet.UnorderedItems.Select(item => item.Element).ToList(),
+                    current);
+            }
 
             if (current == context.Goal)
             {
