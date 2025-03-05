@@ -44,6 +44,7 @@ namespace Pathfinder
             var stepDelayValue = Math.Pow(StepDelaySlider.Value, 4);
 
             _drawStopwatch = Stopwatch.StartNew();
+            lastMs = 0;
 
             switch (mode)
             {
@@ -159,6 +160,8 @@ namespace Pathfinder
             };
         }
 
+        double lastMs = 0;
+
         /// <summary>
         /// Funktio, jota reitinhakualgoritmi kutsuu jokaisen pisteen prosessoinnin yhteydessä. Piirtää tilannekuvan.
         /// </summary>
@@ -168,12 +171,12 @@ namespace Pathfinder
         private void Callback(IEnumerable<Node> visited, IEnumerable<Node> queue, Node current)
         {
             double ms = _drawStopwatch.Elapsed.TotalMilliseconds;
-            //if (ms < 16.6667)
-            if (ms < 16.66)
+            var delta = ms - lastMs;
+            if (delta < (32))
             {
                 return;
             }
-            _drawStopwatch.Restart();
+            lastMs = ms;
 
             Dispatcher.UIThread.InvokeAsync(() =>
             {

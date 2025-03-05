@@ -137,6 +137,8 @@ namespace Pathfinder
                     var visitedCount = 0;
                     foreach (var node in visited)
                     {
+                        visitedCount++;
+
                         if (!_lastCurrent.Contains(node) && _lastVisited.Contains(node))
                         {
                             continue;
@@ -144,7 +146,6 @@ namespace Pathfinder
                         _lastVisited.Add(node);
 
                         buffer[node.Y * stride + node.X] = ToBgr(Brushes.LightGreen.Color);
-                        visitedCount++;
                     }
                     NodesVisitedTextBox.Text = visitedCount.ToString();
 

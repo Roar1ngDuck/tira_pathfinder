@@ -9,5 +9,5 @@ public abstract class PathFindingAlgorithm
 
     public abstract PathFindingResult Search(Node start, Node goal, bool allowDiagonal);
 
-    public CallbackInterval CallbackInterval { get; set; } = new CallbackInterval(TimeSpan.FromMilliseconds(16.66));
+    public CallbackInterval CallbackInterval { get; set; } = new CallbackInterval(TimeSpan.FromMilliseconds(32));
 }
