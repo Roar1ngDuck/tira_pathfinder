@@ -137,7 +137,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
         {
             var path = Utils.PathUtils.ReconstructPath(ctx.CameFrom, ctx.Start, current);
             return new PathFindingResult(
-                Utils.PathUtils.ExtractVisitedNodes(ctx.GScore).Union(ctx.AllVisitedNodes),
+                Utils.PathUtils.ExtractVisitedNodes(ctx.GScore),
                 path
             );
         }
@@ -371,6 +371,16 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
         {
             ctx.AllVisitedNodes.Add(new Node(nx, ny));
         }
+
+        if (CallbackInterval.ShouldCallCallback())
+        {
+            ctx.CallbackFunc?.Invoke(
+                Utils.PathUtils.ExtractVisitedNodes(ctx.GScore),
+                ctx.AllVisitedNodes,
+                new Node(x, y));
+        }
+
+        ctx.StepDelay?.Wait();
 
         if (nx == goal.x && ny == goal.y)
         {

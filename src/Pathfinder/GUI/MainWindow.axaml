@@ -7,15 +7,15 @@
         Title="Pathfinder">
     <DockPanel>
         <StackPanel DockPanel.Dock="Left" Width="400" Margin="10">
-            <TextBlock Text="Map:" />
+            <TextBlock Text="Path to map:" />
             <TextBox Name="MapTextBox" VerticalAlignment="Top" TextChanged="MapTextBox_TextChanged" />
 
 			<Button Name="SelectFileButton" Click="SelectFileButton_Click">Select file</Button>
 
-            <TextBlock Text="Start:" />
+            <TextBlock Text="Start coordinate:" />
 			<TextBox Name="StartTextBox" VerticalAlignment="Top" >0,0</TextBox>
 
-            <TextBlock Text="Goal:" />
+            <TextBlock Text="Goal coordinate:" />
 			<TextBox Name="GoalTextBox" VerticalAlignment="Top">0,0</TextBox>
 
 			<TextBlock Text="Algorithm:" />
@@ -46,9 +46,6 @@
 
             <TextBlock Text="Time taken:" />
             <TextBox Name="TimeTakenTextBox" IsReadOnly="True" VerticalAlignment="Top" />
-		
-		     <TextBlock Text="Debug:" />
-            <TextBox Name="DebugOutputTextBox" IsReadOnly="True" VerticalAlignment="Top" Height="400" />
         </StackPanel>
 		<Viewbox Stretch="Uniform">
 			<Grid>

@@ -8,6 +8,7 @@ using Avalonia.Threading;
 using Pathfinder.GUI;
 using Pathfinder.Pathfinding;
 using Pathfinder.Pathfinding.Algorithms;
+using Pathfinder.Pathfinding.Utils;
 
 namespace Pathfinder
 {
@@ -114,16 +115,16 @@ namespace Pathfinder
             var rnd = new Random();
             var randomPathCount = 100;
 
-            DebugOutputTextBox.Text += 
-                $"Benchmarking with {randomPathCount} random paths using {algorithm.GetType().Name}\n";
-
             for (int i = 0; i < randomPathCount; i++)
             {
                 var start = new Node(rnd.Next(0, _map.GetLength(0)), rnd.Next(0, _map.GetLength(1)));
                 var goal = new Node(rnd.Next(0, _map.GetLength(0)), rnd.Next(0, _map.GetLength(1)));
 
-                DebugOutputTextBox.Text += 
-                    $"Random path: ({start.X},{start.Y}) -> ({goal.X},{goal.Y})\n";
+                if (DistanceUtils.EuclideanDistance(start, goal) < 100)
+                {
+                    i--;
+                    continue;
+                }
 
                 _timingStopwatch = Stopwatch.StartNew();
                 var result = algorithm.Search(start, goal, allowDiagonal);
@@ -133,9 +134,6 @@ namespace Pathfinder
                 IEnumerable<Node> emptyList = new List<Node>();
 
                 DrawPaths(ref emptyList, ref emptyList, new Node(0, 0), result.Path);
-
-                DebugOutputTextBox.Text += 
-                    $"Result: Path found={result.PathFound}, Path length={result.Path?.Count}\n";
 
                 totalTimeTaken += _timingStopwatch.Elapsed.TotalMilliseconds;
             }
