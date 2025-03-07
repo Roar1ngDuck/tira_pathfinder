@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace Pathfinder.Pathfinding.Algorithms;
 
@@ -226,18 +225,18 @@ public class AStar(int[,] map) : PathFindingAlgorithm
     /// </summary>
     private class SearchContext
     {
-        public Node Start { get; set; }
-        public Node Goal { get; set; }
-        public bool AllowDiagonal { get; set; }
+        public required Node Start { get; set; }
+        public required Node Goal { get; set; }
+        public required bool AllowDiagonal { get; set; }
         public Action<IEnumerable<Node>, List<Node>, Node>? CallbackFunc { get; set; }
         public StepDelay? StepDelay { get; set; }
 
-        public Node?[,] CameFrom { get; set; }
-        public double[,] GScore { get; set; }
-        public double[,] FScore { get; set; }
-        public bool[,] ClosedSet { get; set; }
-        public Func<Node, Node, double> Heuristic { get; set; }
+        public required Node?[,] CameFrom { get; set; }
+        public required double[,] GScore { get; set; }
+        public required double[,] FScore { get; set; }
+        public required bool[,] ClosedSet { get; set; }
+        public required Func<Node, Node, double> Heuristic { get; set; }
 
-        public PriorityQueue<Node, double> OpenSet { get; set; }
+        public required PriorityQueue<Node, double> OpenSet { get; set; }
     }
 }

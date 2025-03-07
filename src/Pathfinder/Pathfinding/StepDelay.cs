@@ -1,46 +1,54 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
-namespace Pathfinder.Pathfinding
+namespace Pathfinder.Pathfinding;
+
+public class StepDelay
 {
-    public class StepDelay
+    private Stopwatch _timingStopwatch { get; set; }
+    private long _timingNodeCounter { get; set; }
+    private TimeSpan _targetStepDelay { get; set; }
+
+    /// <summary>
+    /// Hallitsee viivettä
+    /// </summary>
+    /// <param name="targetStepDelay">Haluttu keskiarvo viiveelle</param>
+    public StepDelay(TimeSpan targetStepDelay)
     {
-        private Stopwatch _timingStopwatch;
-        private long _timingNodeCounter;
-        private TimeSpan _targetStepDelay;
+        _targetStepDelay = targetStepDelay;
+        _timingStopwatch = Stopwatch.StartNew();
+        _timingNodeCounter = 0;
+    }
 
-        public StepDelay(TimeSpan targetStepDelay)
+    /// <summary>
+    /// Asettaa uuden viiveen
+    /// </summary>
+    /// <param name="targetStepDelay">Haluttu keskiarvo viiveelle</param>
+    public void SetTargetStepDelay(TimeSpan targetStepDelay)
+    {
+        _targetStepDelay = targetStepDelay;
+        _timingStopwatch = Stopwatch.StartNew();
+        _timingNodeCounter = 0;
+    }
+
+    /// <summary>
+    /// Pysäyttää threadin pyrkien pitämään keskimääräisen viiveen valitussa arvossa
+    /// </summary>
+    public void Wait()
+    {
+        if (_targetStepDelay.TotalMilliseconds == 0)
         {
-            SetTargetStepDelay(targetStepDelay);
+            return;
         }
 
-        public void SetTargetStepDelay(TimeSpan targetStepDelay)
+        double elapsedMs = _timingStopwatch.Elapsed.TotalMilliseconds;
+        double targetDelay = _timingNodeCounter * _targetStepDelay.TotalMilliseconds;
+        if (elapsedMs < targetDelay)
         {
-            _targetStepDelay = targetStepDelay;
-            _timingStopwatch = Stopwatch.StartNew();
-            _timingNodeCounter = 0;
+            Thread.Sleep((int)Math.Max(1, targetDelay - elapsedMs));
         }
 
-        public void Wait()
-        {
-            if (_targetStepDelay.TotalMilliseconds == 0)
-            {
-                return;
-            }
-
-            double elapsedMs = _timingStopwatch.Elapsed.TotalMilliseconds;
-            double targetDelay = _timingNodeCounter * _targetStepDelay.TotalMilliseconds;
-            if (elapsedMs < targetDelay)
-            {
-                Thread.Sleep((int)Math.Max(1, targetDelay - elapsedMs));
-            }
-
-            _timingNodeCounter++;
-        }
+        _timingNodeCounter++;
     }
 }

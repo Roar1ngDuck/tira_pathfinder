@@ -1,14 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace Pathfinder.GUI;
 
-namespace Pathfinder.GUI
+public enum VisualizationMode
 {
-    public enum VisualizationMode
-    {
-        SinglePath,
-        RandomPathBenchmark
-    }
+    SinglePath,
+    RandomPathBenchmark
 }

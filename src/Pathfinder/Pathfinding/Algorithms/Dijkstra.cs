@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
 
 namespace Pathfinder.Pathfinding.Algorithms;
 
@@ -208,15 +206,15 @@ public class Dijkstra(int[,] map) : PathFindingAlgorithm
     /// </summary>
     private class SearchContext
     {
-        public Node Start { get; set; }
-        public Node Goal { get; set; }
-        public bool AllowDiagonal { get; set; }
+        public required Node Start { get; set; }
+        public required Node Goal { get; set; }
+        public required bool AllowDiagonal { get; set; }
         public Action<IEnumerable<Node>, List<Node>, Node>? CallbackFunc { get; set; }
         public StepDelay? StepDelay { get; set; }
 
-        public Node?[,] CameFrom { get; set; }
-        public double[,] GScore { get; set; }
+        public required Node?[,] CameFrom { get; set; }
+        public required double[,] GScore { get; set; }
 
-        public PriorityQueue<Node, double> OpenSet { get; set; }
+        public required PriorityQueue<Node, double> OpenSet { get; set; }
     }
 }

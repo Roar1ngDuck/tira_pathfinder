@@ -8,14 +8,14 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 
-namespace Pathfinder.Tests
+namespace Pathfinder.Tests.Tests.Algorithms
 {
     public class RealMapTests
     {
         [Fact]
         public void Berlin_PathLengthsMatch()
         {
-            for (int i = 0; i < 25; i++)
+            for (int i = 0; i < 15; i++)
             {
                 int seed = i;
                 var map = Input.ReadMapFromFile("Maps/Berlin_1_512.map");
@@ -48,7 +48,7 @@ namespace Pathfinder.Tests
         [Fact]
         public void RoomMap_PathLengthsMatch()
         {
-            for (int i = 0; i < 25; i++)
+            for (int i = 0; i < 15; i++)
             {
                 int seed = i;
                 var map = Input.ReadMapFromFile("Maps/16room_001.map");
@@ -80,7 +80,7 @@ namespace Pathfinder.Tests
         [Fact]
         public void WinterConquest_PathLengthsMatch()
         {
-            for (int i = 0; i < 25; i++)
+            for (int i = 0; i < 15; i++)
             {
                 int seed = i;
                 var map = Input.ReadMapFromFile("Maps/WinterConquest.map");

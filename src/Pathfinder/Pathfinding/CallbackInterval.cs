@@ -1,49 +1,57 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace Pathfinder.Pathfinding
+namespace Pathfinder.Pathfinding;
+
+public class CallbackInterval
 {
-    public class CallbackInterval
+    private Stopwatch _timingStopwatch;
+    private long _timingNodeCounter;
+    private TimeSpan _targetInterval;
+
+    /// <summary>
+    /// Hallitsee aikaa joka on kulunut callbackin viimeisestä kutsusta
+    /// </summary>
+    /// <param name="targetInterval">Haluttu aika kutsujen välillä</param>
+    public CallbackInterval(TimeSpan targetInterval)
     {
-        private Stopwatch _timingStopwatch;
-        private long _timingNodeCounter;
-        private TimeSpan _targetInterval;
+        _targetInterval = targetInterval;
+        _timingStopwatch = Stopwatch.StartNew();
+        _timingNodeCounter = 0; SetTargetInterval(targetInterval);
+    }
 
-        public CallbackInterval(TimeSpan targetInterval)
+    /// <summary>
+    /// Asettaa halutun ajan kutsujen välille
+    /// </summary>
+    /// <param name="targetInterval">Haluttu aika kutsujen välillä</param>
+    public void SetTargetInterval(TimeSpan targetInterval)
+    {
+        _targetInterval = targetInterval;
+        _timingStopwatch = Stopwatch.StartNew();
+        _timingNodeCounter = 0;
+    }
+
+    /// <summary>
+    /// Tarkistaa jos aikaa on kulunut tarpeeksi jotta callback voitaisi kutsua uudestaan
+    /// </summary>
+    /// <returns>True jos callback pitäisi kutsua</returns>
+    public bool ShouldCallCallback()
+    {
+        if (_targetInterval.TotalMilliseconds == 0)
         {
-            SetTargetInterval(targetInterval);
+            return true;
         }
 
-        public void SetTargetInterval(TimeSpan targetStepDelay)
+        double elapsedMs = _timingStopwatch.Elapsed.TotalMilliseconds;
+        double targetInterval = _timingNodeCounter * _targetInterval.TotalMilliseconds;
+
+        if (elapsedMs > targetInterval)
         {
-            _targetInterval = targetStepDelay;
-            _timingStopwatch = Stopwatch.StartNew();
-            _timingNodeCounter = 0;
+            _timingNodeCounter++;
+
+            return true;
         }
 
-        public bool ShouldCallCallback()
-        {
-            if (_targetInterval.TotalMilliseconds == 0)
-            {
-                return true;
-            }
-
-            double elapsedMs = _timingStopwatch.Elapsed.TotalMilliseconds;
-            double targetInterval = _timingNodeCounter * _targetInterval.TotalMilliseconds;
-
-            if (elapsedMs > targetInterval)
-            {
-                _timingNodeCounter++;
-
-                return true;
-            }
-
-            return false;
-        }
+        return false;
     }
 }

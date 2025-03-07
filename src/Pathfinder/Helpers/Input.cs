@@ -61,6 +61,12 @@ public class Input
         return map;
     }
 
+    /// <summary>
+    /// Yrittää lukea kartan joko tiedostosta tai kuvasta. Palauttaa true jos onnistui ja asettaa map arvoksi luettu kartta.
+    /// </summary>
+    /// <param name="path">Polku tiedostoon. Suhteellinen ja absoluuttinen polku käy.</param>
+    /// <param name="map">Kartta</param>
+    /// <returns></returns>
     public static bool TryReadMap(string path, out int[,] map)
     {
         try
@@ -81,6 +87,11 @@ public class Input
         return false;
     }
 
+    /// <summary>
+    /// Korjaa polun muotoilun, jotta se toimii vaikka kopioidussa polussa olisi lainausmerkit.
+    /// </summary>
+    /// <param name="path"></param>
+    /// <returns></returns>
     private static string FixPathFormatting(string path)
     {
         return path.Replace("\"", "").Trim();

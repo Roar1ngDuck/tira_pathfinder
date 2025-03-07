@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 
 namespace Pathfinder.Pathfinding.Algorithms;
 
@@ -225,7 +224,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
     /// </summary>
     /// <param name="x">Nykyinen x-koordinaatti.</param>
     /// <param name="y">Nykyinen y-koordinaatti.</param>
-    /// <returns>Lista naapurikoordinaatteja (x, y).</returns>
+    /// <returns>Lista naapureita (x, y).</returns>
     private List<(int x, int y)> GetInitialNeighbors(int x, int y, JpsContext ctx)
     {
         var neighbors = _directions
@@ -247,7 +246,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
     /// <param name="x">Nykyinen x-koordinaatti.</param>
     /// <param name="y">Nykyinen y-koordinaatti.</param>
     /// <param name="parent">Edeltäjän x- ja y-koordinaatit.</param>
-    /// <returns>Lista ohjattuja naapureita (x, y).</returns>
+    /// <returns>Lista naapureita (x, y).</returns>
     private List<(int x, int y)> GetDirectedNeighbors(int x, int y, (int px, int py) parent, JpsContext ctx)
     {
         var dx = Math.Sign(x - parent.px);
@@ -367,11 +366,13 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
             return null;
         }
 
+        // Visualisointia varten tallennetaan kaikki käydyt solmut. Tämä on hidas operaatio, joten käytetään vain visualisointiin.
         if (ctx.TrackAllVisitedNodes)
         {
             ctx.AllVisitedNodes.Add(new Node(nx, ny));
         }
 
+        // Visualisointia varten kutsutaan callback-funktiota, jos asetettu.
         if (CallbackInterval.ShouldCallCallback())
         {
             ctx.CallbackFunc?.Invoke(
@@ -395,7 +396,6 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
                 return (nx, ny);
             }
 
-            // Rekursiivinen kutsu samaan suuntaan
             return Jump(nx, ny, dx, dy, goal, ctx);
         }
         else if (dy == 0)  // Vaaka
@@ -477,7 +477,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
     /// </summary>
     private class JpsContext
     {
-        public int[,] Map { get; set; }
+        public required int[,] Map { get; set; }
 
         public bool TrackAllVisitedNodes { get; set; }
         public List<Node> AllVisitedNodes { get; set; } = new();
@@ -485,13 +485,13 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
         public Action<IEnumerable<Node>, List<Node>, Node>? CallbackFunc { get; set; }
         public StepDelay? StepDelay { get; set; }
 
-        public (int x, int y) Start { get; set; }
-        public (int x, int y) Goal { get; set; }
+        public required  (int x, int y) Start { get; set; }
+        public required  (int x, int y) Goal { get; set; }
 
-        public Dictionary<(int x, int y), (int x, int y)> CameFrom { get; set; }
-        public HashSet<(int x, int y)> ClosedSet { get; set; }
-        public Dictionary<(int x, int y), double> GScore { get; set; }
-        public Dictionary<(int x, int y), double> FScore { get; set; }
-        public PriorityQueue<(int x, int y), double> OpenSet { get; set; }
+        public required Dictionary<(int x, int y), (int x, int y)> CameFrom { get; set; }
+        public required HashSet<(int x, int y)> ClosedSet { get; set; }
+        public required Dictionary<(int x, int y), double> GScore { get; set; }
+        public required Dictionary<(int x, int y), double> FScore { get; set; }
+        public required PriorityQueue<(int x, int y), double> OpenSet { get; set; }
     }
 }
