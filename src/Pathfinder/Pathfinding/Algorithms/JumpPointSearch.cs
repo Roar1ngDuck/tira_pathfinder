@@ -105,7 +105,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
             {
                 ctx.CallbackFunc?.Invoke(
                     Utils.PathUtils.ExtractVisitedNodes(ctx.GScore),
-                    ctx.AllVisitedNodes,
+                    ctx.AllVisitedNodes.ToList(),
                     new Node(current.x, current.y));
             }
 
@@ -376,7 +376,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
         {
             ctx.CallbackFunc?.Invoke(
                 Utils.PathUtils.ExtractVisitedNodes(ctx.GScore),
-                ctx.AllVisitedNodes,
+                ctx.AllVisitedNodes.ToList(),
                 new Node(x, y));
         }
 

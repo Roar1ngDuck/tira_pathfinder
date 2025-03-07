@@ -172,7 +172,7 @@ namespace Pathfinder
         {
             double ms = _drawStopwatch.Elapsed.TotalMilliseconds;
             var delta = ms - lastMs;
-            if (delta < (32))
+            if (delta < 16.667)
             {
                 return;
             }
