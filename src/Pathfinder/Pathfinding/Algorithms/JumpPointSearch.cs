@@ -100,6 +100,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
             var current = ctx.OpenSet.Dequeue();
             ctx.ClosedSet.Add(current);
 
+            // Visualisointia varten kutsutaan callback-funktiota, jos asetettu.
             if (CallbackInterval.ShouldCallCallback())
             {
                 ctx.CallbackFunc?.Invoke(
@@ -109,7 +110,7 @@ public class JumpPointSearch(int[,] map) : PathFindingAlgorithm
             }
 
             var pathResult = CheckForGoalReached(current, ctx);
-            if (pathResult != null)
+            if (pathResult is not null)
             {
                 return pathResult;
             }

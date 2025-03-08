@@ -15,7 +15,7 @@ Seuraavat asiat testataan:
 
 Testit voidaan ajaa käynnistämällä ensin komento ```dotnet build``` jonka jälkeen ```dotnet test```.
 
-Kattavuusreporttia varten tarvitaan reportgenerator, jonka voi asentaa komennolla ```dotnet tool install -g dotnet-reportgenerator-globaltool``
+Kattavuusreporttia varten tarvitaan reportgenerator, jonka voi asentaa komennolla ```dotnet tool install -g dotnet-reportgenerator-globaltool```
 
 Testeistä voidaan tallentaa kattavuus komennolla: ```dotnet test --collect:"XPlat Code Coverage"```
 
