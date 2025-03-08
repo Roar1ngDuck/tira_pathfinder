@@ -42,7 +42,7 @@ Käyttää myös heurestiikkafunktiota kuten A*, mutta se eroaa siten, että se 
 
 Algoritmien suorituskyky toisiinsa nähden on se mitä niiden kuuluisikin olla. Lähes kaikissa kartoissa mitä testasin on Dijkstra hitain, A* toiseksi nopein ja JPS nopein. Joissain kartoissa, kuten suurissa monimutkaisissa sokkeloissa, joissa A* heurestiikkafunktiosta ei ollut merkittävästi hyötyä ja se joutui käymään lähes yhtä monta pistettä läpi kuin Dijkstra, oli Dijkstra jopa hieman A* algoritmia nopeampi. Reittien hakuun kuluva aika myös vaihtelee aika paljon jokaisen suorituskerran välillä.
 
-Pahimmassa tapauksessa aikavaatimus pikselikartoilla kaikilla algoritmeilla kun vinottaiset liikkeet sallitaan on O(8^d), jossa d on lyhimmän reitin pituus. Käytännössä kuitenkin A* ja JPS saavuttaa usein paremman tuloksen.
+Pahimmassa tapauksessa aikavaatimus kaikilla algoritmeilla on O(b^d), jossa d on lyhimmän reitin pituus ja b on haarautumistekijä. Pikselikartoilla kun voidaan liikkua kahdeksaan suuntaan on haarautumistekijä kartasta riippuen maksimissaan 8. Koska pistettä mistä on tultu ei käydä läpi uudestaan niin maksimi laskee aloituspisteen jälkeen kaikille pisteille seitsemään. Lisäksi monet siirtymiset muutenkin johtavat samoihin pisteisiin. Keskimääräinen haarautumistekijä käytännössä useissa kartoissa voi helposti olla jopa vain 2. Käytännössä A* ja JPS saavuttaa usein paremman tuloksen, koska niiden ei tarvitse käydä kaikkia pisteitä läpi.
 
 ## Puutteet ja parannusehdotukset
 
